@@ -1,66 +1,66 @@
-# 04. Infra & Database — База данных, Контейнеризация и Инфраструктура
+# 04. Infra & Database — База данных, Контейнеризация и Сиды
 
 ## Зона ответственности
-Проектирование схемы базы данных, управление миграциями, контейнеризация проекта через Docker, настройка окружения и подготовка демонстрационных данных.
+Проектирование базы данных для объединения новостей и инсайтов, docker-compose инфраструктура, сидирование демонстрационными данными из ТЗ и подготовка проекта к сдаче.
 
 ---
 
-## Основной функционал
+## Схема базы данных (Relational Schema)
 
-### 1. Схема базы данных (Database Schema)
-Реляционная структура данных (PostgreSQL / SQLite):
+Схема оптимизирована для быстрой выдачи объединенных карточек **«Новость-Инсайт»**:
 
-- **Таблица `users`**:
-  - `id`: UUID / Primary Key
-  - `email`: VARCHAR(255), UNIQUE, NOT NULL
-  - `hashed_password`: VARCHAR(255), NOT NULL
-  - `full_name`: VARCHAR(150)
-  - `role`: ENUM ('user', 'admin') DEFAULT 'user'
-  - `created_at`: TIMESTAMP
+- **`companies`** (справочник клиентов на базе `df_Uid_data_hack.csv`):
+  - `synthetic_u` (PK): идентификатор компании
+  - `name`: название компании для демо-интерфейса
+  - `mainokved_name`: отрасль
+  - `revenue_company`: годовая выручка (> 15 млрд руб. для крупного бизнеса)
+  - `fts_flag`: наличие импорта/экспорта в ФТС (0/1)
+  - `cl_product_loa_mark`: наличие кредитов (0/1)
+  - `cl_product_gar_mark`: наличие банковских гарантий (0/1)
+  - `cl_product_rko_mark`: наличие РКО (0/1)
+  - `region`: регион регистрации
 
-- **Таблица `news`**:
-  - `id`: UUID / Primary Key
-  - `title`: VARCHAR(500), NOT NULL
-  - `content`: TEXT, NOT NULL
-  - `source`: VARCHAR(255)
-  - `source_url`: VARCHAR(1000)
-  - `category`: VARCHAR(100)
-  - `published_at`: TIMESTAMP
-  - `created_at`: TIMESTAMP
+- **`users`** (пользователи интернет-банка):
+  - `id` (PK), `email`, `hashed_password`
+  - `full_name`: ФИО
+  - `role`: роль ЛПР (`CEO`, `CFO`, `ACCOUNTANT`)
+  - `current_company_id` (FK -> companies.synthetic_u)
 
-- **Таблица `insights`**:
-  - `id`: UUID / Primary Key
-  - `news_id`: UUID, FOREIGN KEY -> news(id) ON DELETE CASCADE
-  - `summary`: TEXT (краткая выжимка TL;DR)
-  - `sentiment`: VARCHAR(50) (positive, neutral, negative)
-  - `importance_score`: INTEGER (1..10)
-  - `key_takeaways`: JSON / TEXT[]
-  - `risks`: JSON / TEXT[]
-  - `opportunities`: JSON / TEXT[]
-  - `action_items`: JSON / TEXT[]
-  - `created_at`: TIMESTAMP
+- **`news`** (новости):
+  - `id` (PK), `title`, `summary_facts`, `source`, `source_url`, `category`, `published_at`
 
-- **Таблица `favorites`**:
-  - `user_id`: UUID, FOREIGN KEY -> users(id) ON DELETE CASCADE
-  - `news_id`: UUID, FOREIGN KEY -> news(id) ON DELETE CASCADE
-  - PRIMARY KEY (user_id, news_id)
-  - `created_at`: TIMESTAMP
+- **`insights`** (персонализированные инсайты под связку новость + компания + роль):
+  - `id` (PK)
+  - `news_id` (FK -> news.id ON DELETE CASCADE)
+  - `company_id` (FK -> companies.synthetic_u)
+  - `target_role`: `CEO` | `CFO` | `ACCOUNTANT` | `ALL`
+  - `why_it_matters`: почему важно для бизнеса клиента
+  - `risks`: JSON-список рисков
+  - `opportunities`: JSON-список возможностей
+  - `action_item`: рекомендуемый следующий шаг
+  - `alfa_bank_position`: цитата и позиция экспертов Альфа-Банка
+  - `alfa_report_name`: название отчета банка
+  - `alfa_report_page`: номер страницы
+  - `traceability_json`: сработавшие признаки и скоринг
 
-### 2. Контейнеризация (Docker & Docker Compose)
-- Подготовка `docker-compose.yml`:
-  - `frontend`: сборка/запуск интерфейса.
-  - `backend`: запуск FastAPI / Node.js сервера.
-  - `db`: образ PostgreSQL с пробросом volume для персистентности данных.
-  - *(Опционально)* `ai-service`: отдельный контейнер для локальной LLM (Ollama) или микросервиса.
+- **`favorites`** (закладки):
+  - `user_id` (FK -> users.id), `news_id` (FK -> news.id)
 
-### 3. Сиды данных (Seed Data)
-- Скрипт `seed_data.py` / `seed.sql`:
-  - Создание тестового пользователя (`test@example.com` / `password123`).
-  - Наполнение базы 10–15 актуальными новостями с качественными предрасчитанными инсайтами, чтобы фронтенд и бэкенд могли работать сразу без обязательного подключения платных API-ключей.
+---
 
-### 4. Управление окружением
-- Шаблон `.env.example` с подробным описанием всех необходимых ключей:
-  - `DATABASE_URL`
-  - `JWT_SECRET_KEY`
-  - `OPENAI_API_KEY` / `GEMINI_API_KEY`
-  - `BACKEND_CORS_ORIGINS`
+## Сиды демонстрационных данных (`seed_data.py`)
+Включают в себя:
+1. Тестовые учетные записи для жюри (`alfa-hack-2026` / `ceo@alfabusiness.ru`).
+2. Профили компаний из датасета кейса (с выручкой > 15 млрд руб. и средний бизнес).
+3. Готовые карточки «Новость-Инсайт» по ключевым отчетам Альфа-Банка:
+   - Сохранение ключевой ставки на уровне 14% (кредитная нагрузка vs факторинг).
+   - Инфляция 25–31 августа и региональные тренды.
+   - Макростатистика 7М26 по рынку труда (дефицит кадров и рост ФОТ).
+
+---
+
+## Развертывание через Docker Compose
+```bash
+docker compose up --build -d
+```
+Поднимает сервисы: `db` (PostgreSQL), `backend` (FastAPI), `frontend` (React/Next.js).
