@@ -74,6 +74,9 @@ out/
 .cache/
 
 # Datasets & Heavy Data Files (local dumps and PDF raw stores)
+datasets/
+articles/
+data/
 data/raw/
 data/processed/
 *.csv

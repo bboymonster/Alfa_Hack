@@ -1,0 +1,93 @@
+version: "3.9"
+
+services:
+  # ==============================================================================
+  # Реляционная база данных PostgreSQL 16
+  # ==============================================================================
+  db:
+    image: postgres:16-alpine
+    container_name: alfa-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-alfa_news}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-alfa_news}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - alfa-network
+
+  # ==============================================================================
+  # Backend API сервис (FastAPI)
+  # ==============================================================================
+  backend:
+    build:
+      context: ../02-backend
+      dockerfile: Dockerfile
+    container_name: alfa-backend
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-alfa_news}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-supersecretjwtkey_change_in_production_1234567890}
+      LLM_PROVIDER: ${LLM_PROVIDER:-deepseek}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      PORT: 8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - alfa-network
+
+  # ==============================================================================
+  # Frontend клиент (React / Next.js / Vite)
+  # ==============================================================================
+  frontend:
+    build:
+      context: ../01-frontend
+      dockerfile: Dockerfile
+    container_name: alfa-frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - alfa-network
+
+  # ==============================================================================
+  # Web-интерфейс для инспекции базы данных (Adminer)
+  # Доступен по адресу: http://localhost:8080
+  # ==============================================================================
+  adminer:
+    image: adminer:latest
+    container_name: alfa-adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - alfa-network
+
+volumes:
+  postgres_data:
+    name: alfa_postgres_data
+
+networks:
+  alfa-network:
+    name: alfa-network
+    driver: bridge
