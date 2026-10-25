@@ -17,7 +17,8 @@ REQUEST_ID_HEADER = "X-Request-ID"
 
 def configure_logging(settings: Settings) -> None:
     level = logging.getLevelNamesMapping().get(settings.log_level.upper(), logging.INFO)
-    logging.basicConfig(level=level, stream=sys.stdout, format="%(message)s")
+    # Логи — в stderr, чтобы CLI мог печатать JSON-результат в stdout.
+    logging.basicConfig(level=level, stream=sys.stderr, format="%(message)s", force=True)
     renderer: structlog.types.Processor
     if settings.log_format == "console":
         renderer = structlog.dev.ConsoleRenderer()
@@ -33,7 +34,7 @@ def configure_logging(settings: Settings) -> None:
             renderer,
         ],
         wrapper_class=structlog.make_filtering_bound_logger(level),
-        logger_factory=structlog.PrintLoggerFactory(sys.stdout),
+        logger_factory=structlog.PrintLoggerFactory(sys.stderr),
         cache_logger_on_first_use=False,
     )
 

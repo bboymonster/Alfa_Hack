@@ -1,0 +1,48 @@
+# Каталог отчётов Альфа-Банка: имя файла в data/articles → метаданные для цитирования.
+# Заголовки сверены с первой страницей (OCR) и THIRD_PARTY_NOTICES.md.
+reports:
+  ALFA-Macro_Insights-Policy_Rate_11Sep.pdf:
+    title: "Ключевая ставка ЦБ РФ: ставка без изменения на 14,0%, риторика стала жестче"
+    author: "Центр макроэкономического анализа Альфа-Банка"
+    date: "2026-09-11"
+    topics: [monetary_policy, inflation]
+  Inflation_tracker_02.pdf:
+    title: "Инфляция 25–31 августа: основные выводы"
+    author: "Центр макроэкономического анализа Альфа-Банка"
+    date: "2026-09-02"
+    topics: [inflation, consumer_demand]
+  ALFA-7M26.pdf:
+    title: "Макростатистика 7М26: данные по рынку труда не подтверждают охлаждения экономики"
+    author: "Центр макроэкономического анализа Альфа-Банка"
+    date: "2026-09-07"
+    topics: [labor_market, monetary_policy]
+  ALFA-macro_stat1H26.pdf:
+    title: "Макростатистика 1П26: слабый рост 1П26 смещает прогноз роста ВВП на 0,1% за год"
+    author: "Центр макроэкономического анализа Альфа-Банка"
+    date: "2026-07-31"
+    topics: [industry_markets, consumer_demand, monetary_policy]
+  ALFA-consumption.pdf:
+    title: "Потребление на пике"
+    author: "Центр макроэкономического анализа Альфа-Банка"
+    date: "2026-08-05"
+    topics: [consumer_demand, inflation]
+  FI_Strategy_3Q26_22072026.pdf:
+    title: "Долговой рынок. Тактический взгляд на 3-й квартал 2026 года: время собирать камни"
+    author: "Альфа-Банк, аналитика долгового рынка"
+    date: "2026-07-22"
+    topics: [monetary_policy, industry_markets]
+  Бонд_Бриф_14092026.pdf:
+    title: "Бонд Бриф: итоги недели (заседание ЦБ по ставке добавило долговому рынку негатива)"
+    author: "Альфа-Банк, аналитика долгового рынка"
+    date: "2026-09-14"
+    topics: [monetary_policy]
+  Gold_digest_August26.pdf:
+    title: "Обзор рынка золота, август 2026"
+    author: "Альфа-Банк"
+    date: "2026-08-31"
+    topics: [commodities]
+  ALFA_Russian_Steels_1К21PreviewUpdate_15Apr2021.pdf:
+    title: "Российская сталь: ралли цен продолжается; прогноз результатов за 1К21"
+    author: "Альфа-Банк, аналитика рынка акций"
+    date: "2021-04-15"
+    topics: [commodities, industry_markets]
