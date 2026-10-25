@@ -4,7 +4,6 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query, Request
 
 from app.auth import CurrentUser
-from app.mock_ai import answer_news_question
 from app.schemas import (
     AskRequest,
     AskResponse,
@@ -105,11 +104,11 @@ def favorite(
 
 
 @router.post(
-    "/feed/{item_id}/ask", response_model=AskResponse, summary="Задать вопрос (заглушка AI)"
+    "/feed/{item_id}/ask", response_model=AskResponse, summary="Задать вопрос по карточке"
 )
 def ask(item_id: str, body: AskRequest, request: Request, user: CurrentUser) -> AskResponse:
     item = find_item(request.app.state.store, item_id, user)
-    return AskResponse(
-        feed_item_id=item.id,
-        answer=answer_news_question(item.news, item.insight, body.question),
+    answer, is_demo = request.app.state.ai_client.answer_question(
+        item.news, item.insight, request.app.state.store.companies[item.company_id], item.role, body.question
     )
+    return AskResponse(feed_item_id=item.id, answer=answer, is_demo=is_demo)

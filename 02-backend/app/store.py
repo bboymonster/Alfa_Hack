@@ -1,12 +1,19 @@
-"""Небольшое хранилище в памяти. Позже заменим его запросами к БД из 04-infra-db."""
+"""Небольшое хранилище в памяти. Позже заменим его запросами к БД из 04-infra-db.
+
+Инсайты по умолчанию строит ``mock_ai`` (мгновенно, без сети). Если передан
+``AiClient``, фоном лента обогащается результатами 03-ai-service (агентная
+трассировка, позиция банка из корпуса отчётов); при недоступности сервиса
+каждый инсайт остаётся честной заглушкой.
+"""
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from threading import Lock
+from threading import Lock, Thread
 from uuid import NAMESPACE_URL, uuid5
 
 from pwdlib import PasswordHash
 
+from app.ai_client import AiClient
 from app.mock_ai import generate_feed_insight
 from app.schemas import Company, FeedItem, News, Role, User
 
@@ -24,8 +31,9 @@ class StoredUser:
 
 
 class MemoryStore:
-    def __init__(self) -> None:
+    def __init__(self, ai_client: AiClient | None = None) -> None:
         self.lock = Lock()
+        self.ai_client = ai_client
         # ID и названия первых двух компаний совпадают с демо-профилями seed.py.
         # Значения ниже — самостоятельные фикстуры, исходные CSV не загружаются.
         companies = [
@@ -130,6 +138,28 @@ class MemoryStore:
             )
         # Как в текущей SQL-схеме: избранное привязано к пользователю и новости.
         self.favorites: set[tuple[str, str]] = set()
+
+        if ai_client is not None:
+            Thread(target=self._enrich_with_ai, name="ai-enrich", daemon=True).start()
+
+    def _enrich_with_ai(self) -> None:
+        """Фоновое обогащение ленты инсайтами 03-ai-service (best-effort)."""
+        assert self.ai_client is not None
+        for item in list(self.feed.values()):
+            company = self.companies[item.company_id]
+            result = self.ai_client.generate_insight(item.news, company, item.role)
+            if result is None:
+                continue  # AI недоступен — оставляем детерминированную заглушку
+            insight, score, is_demo = result
+            updated = item.model_copy(
+                update={
+                    "insight": insight,
+                    "importance_score": score,
+                    "is_demo": is_demo,
+                }
+            )
+            with self.lock:
+                self.feed[item.id] = updated
 
     def user_by_id(self, user_id: str) -> StoredUser | None:
         return next((user for user in self.users.values() if user.profile.id == user_id), None)

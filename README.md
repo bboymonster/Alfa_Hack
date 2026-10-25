@@ -84,26 +84,33 @@ flowchart TD
 Alfa_Hack/
 ├── 01-frontend/         # Участник 1: Frontend Developer
 │   ├── README.md        # UI/UX, единая лента «Новость-Инсайт», авторизация, чат
-│   └── .gitkeep
+│   ├── Dockerfile       # сборка Vite → nginx (проксирование /api)
+│   └── nginx.conf
 │
 ├── 02-backend/          # Участник 2: Backend Developer
 │   ├── README.md        # API ленты /api/feed, JWT auth, роуты, безопасность
-│   └── .gitkeep
+│   ├── Dockerfile       # FastAPI :8000
+│   └── app/             # auth.py, feed.py, ai_client.py, store.py, mock_ai.py
 │
 ├── 03-ai-service/       # Участник 3: AI / ML Engineer
 │   ├── README.md        # FastAPI :8001 — инсайты (LangGraph), чат, скоринг, сбор новостей, RAG
+│   ├── Dockerfile       # python:3.12 + Tesseract OCR + uv
 │   ├── src/ai_service/  # agent/ rag/ ingest/ scoring/ llm/ api/
 │   ├── evals/           # golden-набор и eval-гейт
 │   └── scripts/check.sh # ruff + mypy + pytest
 │
 ├── 04-infra-db/         # Участник 4: DevOps & Database Engineer
-│   ├── README.md        # Схема БД, сиды из датасетов кейса, docker-compose
-│   └── .gitkeep
+│   ├── README.md        # Схема БД, сиды из датасетов кейса
+│   ├── init.sql         # DDL PostgreSQL (компании, новости, инсайты, аудит)
+│   ├── schema.sql       # универсальная ANSI SQL схема
+│   ├── seed.py          # сидирование эталонными данными
+│   └── samples/         # компактные JSON-сэмплы из CSV кейса
 │
-├── .env.example         # Переменные окружения (БД, JWT, разрешенные LLM)
-├── .gitignore           # Исключения кэша, данных и секретов
-├── THIRD_PARTY_NOTICES.md # Перечень сторонних библиотек, моделей и датасетов
-└── README.md            # Главная документация проекта
+├── docker-compose.yml   # единый запуск: frontend + backend + ai-service
+├── .env.example         # переменные окружения (JWT, LLM-модели, порты)
+├── .gitignore           # исключения кэша, данных и секретов
+├── THIRD_PARTY_NOTICES.md # перечень сторонних библиотек, моделей и датасетов
+└── README.md            # главная документация проекта
 ```
 
 ---
@@ -173,19 +180,91 @@ cd Alfa_Hack
 ```
 
 ### 2. Запуск через Docker Compose (Рекомендуемый способ для жюри)
+
+Единый воспроизводимый запуск всех компонентов — корневой `docker-compose.yml`:
+
 ```bash
-cp .env.example .env
+cp .env.example .env          # необязательно: есть безопасные значения по умолчанию
 docker compose up --build -d
 ```
+
 Сервисы будут доступны по адресам:
-- **Frontend (Интерфейс «Альфа-Бизнес»)**: `http://localhost:3000`
-- **Backend Swagger API**: `http://localhost:8000/docs`
-- **Тестовые учетные записи**: предзаполнены скриптом сидирования (`alfa-hack-2026` / `password123`).
-- **AI-сервис**: `http://localhost:8001/docs`; после запуска один раз построить индекс
-  отчётов: `cd 03-ai-service && uv run ai-service index-reports` (PDF в `03-ai-service/data/articles/`).
+
+| Сервис | Адрес | Назначение |
+|---|---|---|
+| **Frontend** | `http://localhost:3000` | интерфейс «Альфа-Бизнес» (лента «Новость-Инсайт») |
+| **Backend (Swagger)** | `http://localhost:8000/docs` | FastAPI: авторизация, лента, чат, избранное |
+| **AI-service (Swagger)** | `http://localhost:8001/docs` | агентная логика: инсайты, чат, скоринг, RAG, сбор новостей |
+
+Тестовые учетные записи предзаполнены:
+
+| Логин | Пароль | Роль | Компания |
+|---|---|---|---|
+| `alfa-hack-2026` (аккаунт жюри) | `password123` | CEO | `U_1595` |
+| `ceo@alfabusiness.ru` | `password123` | CEO | `U_1595` |
+| `cfo@alfabusiness.ru` | `password123` | CFO | `U_1595` |
+| `accountant@alfabusiness.ru` | `password123` | Главный бухгалтер | `U_1595` |
+
+**Режимы AI-сервиса.** Без ключа `AI_LLM_API_KEY` сервис работает в режиме
+`offline` — детерминированные инсайты с трассировкой агента (карточки помечаются
+«демо / без LLM»). Чтобы включить реальные модели из Приложения 3 ТЗ, укажите в
+`.env` ключ OpenAI-совместимого провайдера (`AI_LLM_API_KEY`) и модели
+`AI_LLM_MODEL_MAIN/_FAST/_CHECKER`.
+
+**Корпус отчётов Альфа-Банка (опционально, для цитат банка).** Положите PDF-отчёты
+из материалов кейса в `articles/` (9 файлов) и постройте индекс один раз:
+
+```bash
+docker compose exec ai-service ai-service index-reports
+```
+
+После этого в карточках появится поле «Как это оценивает Альфа-Банк» с дословной
+цитатой и страницей отчёта. Индекс сохраняется в volume `alfa_ai_index`; без него
+сервис продолжает работать (позиция банка помечается как «не найдена»).
 
 ### 3. Локальная разработка по модулям
-- [01-frontend/README.md](file:///c:/Projects/Alfa_Hack/01-frontend/README.md) — клиентское приложение (React / Next.js)
-- [02-backend/README.md](file:///c:/Projects/Alfa_Hack/02-backend/README.md) — серверный API (FastAPI)
-- [03-ai-service/README.md](file:///c:/Projects/Alfa_Hack/03-ai-service/README.md) — агентная логика и промпты (Python)
-- [04-infra-db/README.md](file:///c:/Projects/Alfa_Hack/04-infra-db/README.md) — база данных и инфраструктура
+- [01-frontend/README.md](01-frontend/README.md) — клиентское приложение (React / Vite)
+- [02-backend/README.md](02-backend/README.md) — серверный API (FastAPI)
+- [03-ai-service/README.md](03-ai-service/README.md) — агентная логика и промпты (Python)
+- [04-infra-db/README.md](04-infra-db/README.md) — база данных и инфраструктура
+
+---
+
+## ✅ Пошаговый сценарий проверки (end-to-end)
+
+1. **Вход.** Откройте `http://localhost:3000`, войдите как `alfa-hack-2026` /
+   `password123` (или `ceo@alfabusiness.ru` и т.д. для другой роли).
+2. **Смена клиента.** В шапке выберите компанию (`U_1595` — ритейл, `U_1465` —
+   импорт напитков, `DEMO_LOCAL` — малый бизнес) — лента перестроится под контекст
+   компании.
+3. **Смена роли.** Переключите роль CEO → CFO → Главный бухгалтер — карточки
+   переранжируются, а фокус интерпретации и рекомендации изменятся.
+4. **Карточка «Новость-Инсайт».** Проверьте 6 обязательных вопросов: факты (Q1),
+   «почему важно» (Q2), риски и возможности (Q3), действия (Q4), позиция банка
+   (Q5), основание вывода + сработавшие признаки и шаги агента (Q6).
+5. **Диалог.** Нажмите «Спросить нейросеть» и задайте уточняющий вопрос — ответ
+   приходит с трассировкой источников.
+6. **Избранное.** Добавьте карточку в избранное и отфильтруйте ленту по кнопке
+   «★ Избранное».
+7. **Swagger.** Для технической проверки откройте `http://localhost:8000/docs`
+   (backend) и `http://localhost:8001/docs` (AI-service).
+
+---
+
+## 🌐 Развёртывание на бесплатном хостинге (опционально)
+
+Для статической демонстрации подготовлен GitHub Actions-воркфлоу
+[`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml): он собирает
+`01-frontend` (Vite, `base: './'`) и публикует `dist/` на GitHub Pages.
+
+- Фронтенд собран с относительными путями, поэтому работает и на проектном сайте
+  `https://<user>.github.io/Alfa_Hack/`.
+- Без backend фронтенд автоматически переключается в **автономный демо-режим**
+  (`src/demoData.js`): вход, смена компании и роли, чат и избранное работают в браузере.
+- Включение: в репозитории `Settings → Pages → Source: "GitHub Actions"`.
+
+⚠️ Бесплатные GitHub Pages доступны для **публичных** репозиториев. Для приватного
+репозитория Pages требует платный план (GitHub Pro/Team) — в этом случае можно либо
+временно открыть репозиторий, либо развернуть статику на любом другом бесплатном
+хостинге (Netlify, Vercel, Cloudflare Pages) командой сборки `npm ci && npm run build`
+из папки `01-frontend`.
