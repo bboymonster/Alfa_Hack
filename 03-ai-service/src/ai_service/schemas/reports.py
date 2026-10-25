@@ -22,6 +22,7 @@ class ReportChunk(BaseModel):
     page: int = Field(ge=1)
     index: int = Field(ge=0)
     text: str
+    topics: list[str] = []
     score: float | None = None
     dense_score: float | None = None
 

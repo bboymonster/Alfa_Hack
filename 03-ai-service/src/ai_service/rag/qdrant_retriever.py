@@ -81,7 +81,7 @@ class QdrantHybridRetriever:
             self.index.collection,
             query=dense_vec,
             using=DENSE,
-            limit=candidates,
+            limit=candidates * 3,
             with_payload=["chunk_id"],
         )
         dense_scores: dict[str, float] = {}
@@ -101,6 +101,7 @@ class QdrantHybridRetriever:
                     page=int(payload["page"]),
                     index=int(payload["index"]),
                     text=str(payload["text"]),
+                    topics=[str(t) for t in payload.get("topics") or []],
                     score=float(point.score),
                     dense_score=dense_scores.get(chunk_id),
                 )

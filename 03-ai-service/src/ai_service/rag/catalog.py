@@ -42,6 +42,10 @@ class ReportsCatalog:
             )
         return cls(entries=entries)
 
+    def topics_for(self, file: str) -> tuple[str, ...]:
+        entry = self.entries.get(file)
+        return entry.topics if entry else ()
+
     def title_for(self, file: str, first_page_text: str = "") -> str:
         entry = self.entries.get(file)
         if entry:
