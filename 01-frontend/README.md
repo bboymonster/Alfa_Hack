@@ -1,16 +1,45 @@
-# React + Vite
+# 01. Frontend — интерфейс «Альфа-Бизнес»
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Клиентское приложение сервиса **«Альфа-Инсайт»**: единая лента спаренных карточек
+«Новость-Инсайт» с авторизацией, переключением роли и компании, интерактивным
+диалогом с нейросетью и избранным.
 
-Currently, two official plugins are available:
+## Стек
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- React 19 + Vite 8 + Tailwind CSS 4;
+- общение с backend через относительный путь `/api/*` (в Docker nginx проксирует
+  на `backend:8000`, в dev-режиме — Vite proxy на `http://localhost:8000`).
 
-## React Compiler
+## Запуск
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm ci
+npm run dev          # http://localhost:3000 (прокси /api → localhost:8000)
+npm run build        # сборка в dist/
+npm run preview      # предпросмотр собранной версии
+```
 
-## Expanding the ESLint configuration
+## Docker
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Корневой `docker-compose.yml` собирает образ фронтенда (`Dockerfile`) и раздаёт
+статику через nginx (`nginx.conf`) на порту `3000`, проксируя `/api` на backend.
+
+## Автономный демо-режим
+
+Если backend недоступен (например, на статическом GitHub Pages без сервера),
+приложение автоматически переключается в демо-режим на встроенных данных
+(`src/demoData.js`) — сценарий остаётся интерактивным: вход, смена компании и роли,
+чат и избранное работают локально в браузере.
+
+## Структура
+
+```text
+src/
+├── App.jsx                # состояние: вход, лента, фильтры
+├── api.js                 # API-клиент + переключение в демо-режим
+├── demoData.js            # автономные демо-данные (зеркало backend)
+└── components/
+    ├── Login.jsx          # форма входа
+    ├── Header.jsx         # селекторы компании/роли, избранное, выход
+    └── NewsCard.jsx       # карточка «Новость-Инсайт» (6 вопросов, чат, избранное)
+```

@@ -24,6 +24,11 @@ class Settings(BaseSettings):
         "http://127.0.0.1:5173",
     ]
 
+    # 03-ai-service: базовый адрес, таймаут и возможность полностью отключить AI.
+    ai_service_url: str = "http://localhost:8001"
+    ai_service_timeout_s: float = Field(default=60.0, gt=0, le=300)
+    ai_service_enabled: bool = True
+
     @field_validator("jwt_secret_key", mode="before")
     @classmethod
     def use_temporary_key_if_empty(cls, value: str) -> str:

@@ -121,31 +121,39 @@ erDiagram
 
 ## 🚀 Инструкция по запуску
 
-### Вариант 1: Полный запуск через Docker Compose (Рекомендуемый для демо)
+### Вариант 1: Полный запуск приложения (рекомендуемый)
 
-1. Перейдите в папку `04-infra-db`:
-   ```bash
-   cd 04-infra-db
-   ```
-2. Скопируйте файл конфигурации:
-   ```bash
-   cp .env.example .env
-   ```
-3. Запустите контейнеры:
-   ```bash
-   docker compose up -d
-   ```
-   Будут запущены сервисы:
-   - **PostgreSQL 16**: порт `5432`
-   - **FastAPI Backend**: `http://localhost:8000` (Swagger: `/docs`)
-   - **Web UI Frontend**: `http://localhost:3000`
-   - **Adminer (DB Web GUI)**: `http://localhost:8080` (вход: система PostgreSQL, сервер `db`, логин `postgres`, пароль `postgres`, БД `alfa_news`).
+Полный стек (frontend + backend + ai-service) запускается корневым
+`docker-compose.yml` — см. главный [README](../README.md):
 
----
+```bash
+# из корня репозитория
+docker compose up --build -d
+```
 
-### Вариант 2: Локальный запуск без Docker (SQLite Fallback)
+Веб-приложение в демо-режиме хранит данные в памяти (backend `MemoryStore`) и не
+требует PostgreSQL. Данный модуль предоставляет реляционную модель данных и сиды
+как отдельный артефакт.
 
-Для мгновенной автономной разработки без необходимости поднимать Docker-контейнеры реализован автоматический fallback на локальный SQLite:
+### Вариант 2: Только база данных (PostgreSQL + Adminer, опционально)
+
+Если нужна реляционная БД со схемой `init.sql`:
+
+```bash
+cd 04-infra-db
+cp .env.example .env
+docker compose up -d
+```
+
+Будут запущены:
+- **PostgreSQL 16**: порт `5432` (схема `init.sql` применяется автоматически);
+- **Adminer (DB Web GUI)**: `http://localhost:8080` (система PostgreSQL, сервер `db`,
+  логин `postgres`, пароль `postgres`, БД `alfa_news`).
+
+### Вариант 3: Локальный запуск без Docker (SQLite Fallback)
+
+Для мгновенной автономной разработки без Docker реализован автоматический fallback
+на локальный SQLite:
 
 1. Запустите скрипт сидирования:
    ```bash

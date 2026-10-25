@@ -74,6 +74,15 @@ class Traceability(BaseModel):
     verified_sources: list[str]
 
 
+class SelfCheckReport(BaseModel):
+    """Результат самопроверки агента (03-ai-service)."""
+
+    passed: bool
+    violations: list[str] = []
+    attempts: int = 0
+    fixed: list[str] = []
+
+
 class Insight(BaseModel):
     why_it_matters: str
     risks: list[str]
@@ -84,6 +93,11 @@ class Insight(BaseModel):
     alfa_report_page: int | None = None
     alfa_report_url: str | None = None
     traceability: Traceability
+    # Агентная трассировка из 03-ai-service (шаги, самопроверка, уверенность, режим).
+    agent_steps: list[str] | None = None
+    self_check: SelfCheckReport | None = None
+    confidence: float | None = None
+    mode: str | None = None
 
 
 class FeedItem(BaseModel):
@@ -94,7 +108,7 @@ class FeedItem(BaseModel):
     insight: Insight
     importance_score: int = Field(ge=1, le=10)
     is_favorite: bool = False
-    is_demo: Literal[True] = True
+    is_demo: bool = True
 
 
 class FeedResponse(BaseModel):
@@ -103,7 +117,7 @@ class FeedResponse(BaseModel):
     page: int
     page_size: int
     total_pages: int
-    is_demo: Literal[True] = True
+    is_demo: bool = True
 
 
 class FavoriteRequest(RequestBody):
@@ -122,11 +136,11 @@ class AskRequest(RequestBody):
 class AskResponse(BaseModel):
     feed_item_id: str
     answer: str
-    is_demo: Literal[True] = True
+    is_demo: bool = True
 
 
 class HealthResponse(BaseModel):
     status: Literal["ok"] = "ok"
-    mode: Literal["mock"] = "mock"
-    storage: Literal["memory"] = "memory"
-    ai: Literal["mock"] = "mock"
+    mode: str = "demo"
+    storage: str = "memory"
+    ai: str = "mock"

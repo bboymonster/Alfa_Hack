@@ -74,11 +74,13 @@ out/
 .cache/
 
 # Datasets & Heavy Data Files (local dumps and PDF raw stores)
-datasets/
-articles/
-data/
-data/raw/
-data/processed/
+# Привязка к корню (/...), чтобы не игнорировать одноимённые модули исходников,
+# например 03-ai-service/src/ai_service/datasets/.
+/datasets/
+/articles/
+/data/
+/data/raw/
+/data/processed/
 *.csv
 *.tsv
 *.parquet
@@ -88,8 +90,8 @@ data/processed/
 *.h5
 *.sqlite3
 *.db
-!data/sample/*.csv
-!data/sample/*.json
+!/data/sample/*.csv
+!/data/sample/*.json
 
 # ML Models & Vector DB Storage
 *.bin
