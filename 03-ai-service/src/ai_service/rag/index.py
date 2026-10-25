@@ -11,9 +11,10 @@ from qdrant_client import QdrantClient, models
 
 from ai_service.logging import get_logger
 from ai_service.rag.catalog import ReportsCatalog
-from ai_service.rag.chunk import split_page
+from ai_service.rag.chunk import normalize_page_text, split_page
 from ai_service.rag.embedders import DenseEmbedder, SparseEmbedder
 from ai_service.rag.extract import CachedExtractor, ExtractError
+from ai_service.rag.quality import clean_page_text, is_clean_text
 from ai_service.schemas.reports import IndexedFile, IndexReport, ReportDocument
 
 log = get_logger(__name__)
@@ -113,13 +114,19 @@ class ReportIndex:
         report_id = extracted.sha256[:16]
         first_page = next((p.text for p in extracted.pages if p.text), "")
         title = catalog.title_for(pdf_path.name, first_page)
+        topics = list(catalog.topics_for(pdf_path.name))
 
         texts: list[str] = []
         payloads: list[dict[str, Any]] = []
+        skipped_noise = 0
         for page in extracted.pages:
+            cleaned = normalize_page_text(clean_page_text(page.text))
             for index, text in enumerate(
-                split_page(page.text, self.chunk_max_chars, self.chunk_overlap)
+                split_page(cleaned, self.chunk_max_chars, self.chunk_overlap)
             ):
+                if not is_clean_text(text):
+                    skipped_noise += 1
+                    continue
                 chunk_id = f"{report_id}:{page.page}:{index}"
                 texts.append(text)
                 payloads.append(
@@ -131,6 +138,7 @@ class ReportIndex:
                         "page": page.page,
                         "index": index,
                         "text": text,
+                        "topics": topics,
                         "source": page.source,
                     }
                 )
@@ -145,8 +153,11 @@ class ReportIndex:
         if previous and previous.get("report_id") != report_id:
             self.delete_report(str(previous["report_id"]))
 
-        dense_vectors = self.dense.embed(texts)
-        sparse_vectors = self.sparse.embed(texts)
+        # Контекстуальные эмбеддинги: название отчёта добавляется к тексту фрагмента, чтобы
+        # тема документа учитывалась и dense-, и BM25-поиском; в payload хранится чистый текст.
+        embed_texts = [f"{title}. {text}" for text in texts]
+        dense_vectors = self.dense.embed(embed_texts)
+        sparse_vectors = self.sparse.embed(embed_texts)
         points = [
             models.PointStruct(
                 id=point_id(str(payload["chunk_id"])),
@@ -176,7 +187,13 @@ class ReportIndex:
         manifest["dense_model"] = self.dense.model_name
         manifest["sparse_model"] = self.sparse.model_name
         self._write_manifest(manifest)
-        log.info("index.report", file=pdf_path.name, pages=doc.pages, chunks=doc.chunks)
+        log.info(
+            "index.report",
+            file=pdf_path.name,
+            pages=doc.pages,
+            chunks=doc.chunks,
+            skipped_noise=skipped_noise,
+        )
         return doc
 
     def index_directory(

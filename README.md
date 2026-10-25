@@ -91,8 +91,10 @@ Alfa_Hack/
 │   └── .gitkeep
 │
 ├── 03-ai-service/       # Участник 3: AI / ML Engineer
-│   ├── README.md        # Агентный пайплайн, промпты на 6 вопросов, RAG по отчетам
-│   └── .gitkeep
+│   ├── README.md        # FastAPI :8001 — инсайты (LangGraph), чат, скоринг, сбор новостей, RAG
+│   ├── src/ai_service/  # agent/ rag/ ingest/ scoring/ llm/ api/
+│   ├── evals/           # golden-набор и eval-гейт
+│   └── scripts/check.sh # ruff + mypy + pytest
 │
 ├── 04-infra-db/         # Участник 4: DevOps & Database Engineer
 │   ├── README.md        # Схема БД, сиды из датасетов кейса, docker-compose
@@ -147,6 +149,19 @@ Alfa_Hack/
 | `POST` | `/api/feed/{id}/ask` | Интерактивный диалог: вопрос нейросети по новости |
 | `POST` | `/api/feed/{id}/favorite` | Добавление карточки в избранное |
 
+### AI-сервис (`03-ai-service`, порт 8001, вызывается backend'ом)
+
+| Метод | Путь | Описание |
+|---|---|---|
+| `POST` | `/v1/insight` | Инсайт по 6 вопросам ТЗ + карточка в формате backend + трассировка |
+| `POST` | `/v1/ask` | Ответ на вопрос по карточке с источниками |
+| `POST` | `/v1/score` | Оценка важности новостей для компании и роли |
+| `POST` | `/v1/news/collect` | Сбор и нормализация новостей из RSS |
+| `GET` | `/v1/reports`, `/v1/reports/search` | Проиндексированные отчёты банка и поиск по ним |
+
+Контракт: `specs/001-ai-service/contracts/openapi.yaml`; интеграция с backend —
+`specs/001-ai-service/contracts/backend-integration.md`.
+
 ---
 
 ## 🚀 Быстрый старт
@@ -166,6 +181,8 @@ docker compose up --build -d
 - **Frontend (Интерфейс «Альфа-Бизнес»)**: `http://localhost:3000`
 - **Backend Swagger API**: `http://localhost:8000/docs`
 - **Тестовые учетные записи**: предзаполнены скриптом сидирования (`alfa-hack-2026` / `password123`).
+- **AI-сервис**: `http://localhost:8001/docs`; после запуска один раз построить индекс
+  отчётов: `cd 03-ai-service && uv run ai-service index-reports` (PDF в `03-ai-service/data/articles/`).
 
 ### 3. Локальная разработка по модулям
 - [01-frontend/README.md](file:///c:/Projects/Alfa_Hack/01-frontend/README.md) — клиентское приложение (React / Next.js)

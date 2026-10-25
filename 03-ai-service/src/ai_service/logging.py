@@ -34,7 +34,8 @@ def configure_logging(settings: Settings) -> None:
             renderer,
         ],
         wrapper_class=structlog.make_filtering_bound_logger(level),
-        logger_factory=structlog.PrintLoggerFactory(sys.stderr),
+        # sys.stderr резолвится при каждом вызове: pytest подменяет потоки между тестами.
+        logger_factory=lambda *_: structlog.PrintLogger(file=sys.stderr),
         cache_logger_on_first_use=False,
     )
 

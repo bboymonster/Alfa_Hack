@@ -482,6 +482,11 @@ components:
         page: { type: integer }
         index: { type: integer }
         text: { type: string }
+        topics:
+          type: array
+          items: { $ref: "#/components/schemas/NewsCategory" }
+          default: []
+          description: темы отчёта из каталога (reports_catalog.yaml)
         score: { type: number, nullable: true }
         dense_score: { type: number, nullable: true }
 

@@ -86,7 +86,13 @@ class InsightNodes:
         errors += trace.errors
 
         chunks, corpus_available, trace = await self.rag_tool.run(
-            self.retriever, plan.queries, options.top_k, self.settings.rag_min_score
+            self.retriever,
+            plan.queries,
+            options.top_k,
+            self.settings.rag_min_score,
+            keywords=plan.keywords,
+            query_text=f"{state['news'].title} {state['news'].summary_facts}",
+            topic=plan.topic.value,
         )
         steps += trace.steps
         errors += trace.errors

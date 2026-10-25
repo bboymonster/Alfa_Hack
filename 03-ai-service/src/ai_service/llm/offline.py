@@ -5,6 +5,7 @@ import re
 
 from ai_service.agent.context import ChatContext, DraftContext
 from ai_service.agent.rules import ROLE_FOCUS
+from ai_service.rag.quality import best_quote_span, is_clean_sentence
 from ai_service.schemas.chat import ChatDraft
 from ai_service.schemas.common import MatchedFeature, NewsCategory, Role
 from ai_service.schemas.company import CompanyProfile
@@ -21,16 +22,11 @@ def first_sentences(text: str, limit: int = 2, max_chars: int = 600) -> str:
 
 
 def make_quote(chunk: ReportChunk, max_chars: int = 320) -> str:
-    """Дословная подстрока текста фрагмента, обрезанная по границе предложения."""
+    """Дословная подстрока текста фрагмента: самая «чистая» последовательность предложений."""
     text = chunk.text.strip()
     if len(text) <= max_chars:
         return text
-    cut = text[:max_chars]
-    boundary = max(cut.rfind(". "), cut.rfind("! "), cut.rfind("? "))
-    if boundary > max_chars // 2:
-        return cut[: boundary + 1]
-    space = cut.rfind(" ")
-    return cut[:space] if space > 0 else cut
+    return best_quote_span(text, max_chars=max_chars)
 
 
 def bank_position_from_chunk(chunk: ReportChunk) -> BankPosition:
@@ -258,9 +254,23 @@ def _actions(ctx: DraftContext) -> list[str]:
     return actions[:5]
 
 
+MIN_QUOTE_CHARS = 60
+
+
+def pick_bank_position(chunks: list[ReportChunk]) -> BankPosition | None:
+    """Первый фрагмент (в порядке ре-ранка), из которого получается чистая содержательная цитата."""
+    fallback: BankPosition | None = None
+    for chunk in chunks:
+        position = bank_position_from_chunk(chunk)
+        if len(position.quote) >= MIN_QUOTE_CHARS and is_clean_sentence(position.quote):
+            return position
+        fallback = fallback or position
+    return fallback
+
+
 def offline_draft(ctx: DraftContext) -> SixQuestions:
     risks, opps = _consequences(ctx)
-    position = bank_position_from_chunk(ctx.chunks[0]) if ctx.chunks else None
+    position = pick_bank_position(ctx.chunks)
     sources = [f"новость «{ctx.news.title}» ({ctx.news.source})"]
     if position:
         sources.append(f"отчёт «{position.report_title}», стр. {position.page}")
