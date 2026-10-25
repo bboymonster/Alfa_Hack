@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     articles_dir: Path = Path("data/articles")
     datasets_dir: Path = Path("data/datasets")
     index_dir: Path = Path("data/index")
-    reports_catalog: Path = Path("data/reports_catalog.yaml")
+    reports_catalog: Path = Path("src/ai_service/resources/reports_catalog.yaml")
 
     # --- RAG
     embed_dense_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"

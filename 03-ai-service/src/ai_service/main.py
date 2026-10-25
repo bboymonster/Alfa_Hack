@@ -6,7 +6,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from ai_service import __version__
-from ai_service.api import health
+from ai_service.agent.graph import InsightPipeline
+from ai_service.api import health, insight
 from ai_service.app_context import AppContext
 from ai_service.config import Settings, get_settings
 from ai_service.datasets.store import Datasets, build_datasets
@@ -30,7 +31,11 @@ def build_context(
     retriever = retriever or build_retriever(settings)
     datasets = datasets or build_datasets(settings.datasets_dir)
     return AppContext(
-        settings=settings, generator=generator, retriever=retriever, datasets=datasets
+        settings=settings,
+        generator=generator,
+        retriever=retriever,
+        datasets=datasets,
+        insight=InsightPipeline(generator, retriever, datasets, settings),
     )
 
 
@@ -69,6 +74,7 @@ def create_app(
     application.middleware("http")(request_id_middleware)
     install_error_handlers(application)
     application.include_router(health.router)
+    application.include_router(insight.router)
     return application
 
 

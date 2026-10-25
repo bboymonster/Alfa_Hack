@@ -1,7 +1,8 @@
-"""Контекст приложения: настройки, генератор, ретривер, датасеты."""
+"""Контекст приложения: настройки, генератор, ретривер, датасеты, пайплайн инсайта."""
 
 from dataclasses import dataclass
 
+from ai_service.agent.graph import InsightPipeline
 from ai_service.config import Settings
 from ai_service.datasets.store import Datasets
 from ai_service.llm.generator import InsightGenerator
@@ -15,6 +16,7 @@ class AppContext:
     generator: InsightGenerator
     retriever: Retriever
     datasets: Datasets
+    insight: InsightPipeline
 
     @property
     def mode(self) -> Mode:
