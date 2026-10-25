@@ -91,7 +91,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-gradient-to-b from-[--color-surface] via-[--color-surface-elev] to-[--color-surface] text-[--color-text] font-sans">
       <Header
         user={user}
         companies={companies}
@@ -105,12 +105,17 @@ export default function App() {
         onLogout={handleLogout}
       />
 
-      <main className="max-w-5xl mx-auto px-4 pb-12">
-        <div className="flex items-center justify-between mt-6 mb-4">
-          <h1 className="text-2xl font-bold text-white">
-            {favoritesOnly ? 'Избранное' : 'Лента «Новость-Инсайт»'}
+      <main className="max-w-6xl mx-auto px-4 pb-12">
+        <div className="flex items-center justify-between mt-8 mb-5 flex-wrap gap-3">
+          <h1 className="text-2xl font-extrabold text-white">
+            {favoritesOnly ? '★ Избранное' : 'Лента «Новость-Инсайт»'}
           </h1>
-          <span className="text-slate-500 text-sm">{feed.length} карточек</span>
+          <div className="flex items-center gap-3 text-sm text-[--color-text-dim]">
+            <span className="bg-[--color-surface-card] border border-[--color-border] px-3 py-1.5 rounded-lg">
+              {feed.length} карточек
+            </span>
+            {loading && <span className="text-[--color-text-dim]">Обновляем ленту…</span>}
+          </div>
         </div>
 
         {error && (
@@ -120,9 +125,9 @@ export default function App() {
         )}
 
         {loading ? (
-          <div className="text-slate-400 text-center py-16">Загружаем ленту…</div>
+          <div className="text-[--color-text-dim] text-center py-16">Загружаем ленту…</div>
         ) : feed.length === 0 ? (
-          <div className="text-slate-400 text-center py-16">
+          <div className="text-[--color-text-dim] text-center py-16">
             Нет карточек для выбранной компании и роли.
           </div>
         ) : (
