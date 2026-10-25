@@ -1,0 +1,68 @@
+[project]
+name = "alfa-ai-service"
+version = "0.1.0"
+description = "Alfa News Insights — AI-service: insight generation, chat, scoring, news ingest, RAG over Alfa-Bank reports"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.30,<1",
+    "pydantic>=2.9,<3",
+    "pydantic-settings>=2.6,<3",
+    "structlog>=24.1",
+    "langgraph>=1.0",
+    "langchain>=1.0",
+    "langchain-core>=1.0",
+    "langchain-openai>=1.0",
+    "qdrant-client>=1.15",
+    "fastembed>=0.7",
+    "pymupdf>=1.26",
+    "pytesseract>=0.3.13",
+    "pillow>=10",
+    "feedparser>=6.0",
+    "httpx>=0.27",
+    "pandas>=2.2",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+ai-service = "ai_service.cli:main"
+
+[dependency-groups]
+dev = [
+    "ruff",
+    "mypy",
+    "pytest",
+    "pytest-asyncio",
+    "pandas-stubs",
+    "types-PyYAML",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ai_service"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "RUF", "SIM"]
+# Кириллица в строках, комментариях и докстрингах — норма для проекта.
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+[tool.mypy]
+strict = true
+ignore_missing_imports = true
+plugins = ["pydantic.mypy"]
+files = ["src"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["src"]
+filterwarnings = ["ignore::DeprecationWarning"]
