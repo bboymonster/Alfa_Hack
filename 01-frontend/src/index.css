@@ -1,1 +1,75 @@
 @import "tailwindcss";
+
+/*
+ * Тема «Альфа-Инсайт» — корпоративный dark FinTech.
+ * База: глубокий шёлк. Акценты: фирменный алый «Альфа-Банка» + золото для доверия.
+ * Шрифты — только системные, чтобы не зависеть от сети (важно для offline-демо
+ * и развёртывания в Docker / GitHub Pages).
+ */
+
+@theme {
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    "Noto Sans", "Liberation Sans", sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  --color-alfa-red: #e2001f;
+  --color-alfa-red-hover: #c3001a;
+  --color-alfa-gold: #ae8a3d;
+  --color-alfa-gold-hover: #937031;
+  --color-surface: #0e1117;
+  --color-surface-elev: #141722;
+  --color-surface-card: #181c2a;
+  --color-border: #2a3244;
+  --color-border-hover: #444c63;
+  --color-text: #e4e7ef;
+  --color-text-dim: #9aa2b8;
+}
+
+/* ---- Глобальный сброс и базовые стили ---- */
+
+html,
+body,
+#root {
+  @apply h-full m-0;
+}
+
+body {
+  @apply antialiased text-[--color-text] bg-[--color-surface] font-sans;
+  font-feature-settings: "liga" 1, "kern" 1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Тонкая анимация появления контента */
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+[data-rich] .animate-fadeIn {
+  animation: fadeIn 0.45s ease-out both;
+}
+
+/* Скроллбар */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-[--color-border-hover] rounded-full;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #5a6478;
+}
+
+/* Кнопки по умолчанию наследуют курсор-указатель */
+button {
+  cursor: pointer;
+}
