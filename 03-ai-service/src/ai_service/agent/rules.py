@@ -60,6 +60,7 @@ TOPIC_KEYWORDS: dict[NewsCategory, tuple[str, ...]] = {
     NewsCategory.MONETARY_POLICY: (
         "ключевая ставка",
         "ключевой ставк",
+        "ключевую ставк",
         "ставку",
         "банк россии",
         "цб рф",
@@ -217,14 +218,24 @@ MAGNITUDE_KEYWORDS: tuple[str, ...] = (
 )
 
 
+_MAX_HITS_PER_KEYWORD = 3
+_TITLE_WEIGHT = 3
+
+
 def classify_topic_offline(text: str) -> NewsCategory:
+    """Тема по словарю: заголовок (первая строка) весит больше, вклад слова ограничен."""
     lowered = text.lower()
+    title = lowered.split("\n", 1)[0]
     best = NewsCategory.OTHER
-    best_hits = 0
+    best_score = 0
     for topic in _TOPIC_PRIORITY:
-        hits = sum(lowered.count(keyword) for keyword in TOPIC_KEYWORDS[topic])
-        if hits > best_hits:
-            best, best_hits = topic, hits
+        score = 0
+        for keyword in TOPIC_KEYWORDS[topic]:
+            score += min(lowered.count(keyword), _MAX_HITS_PER_KEYWORD)
+            if keyword in title:
+                score += _TITLE_WEIGHT
+        if score > best_score:
+            best, best_score = topic, score
     return best
 
 

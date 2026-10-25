@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:atom="https://www.w3.org/2005/Atom">
+  <channel>
+    <title>Интерфакс</title>
+    <link>https://www.interfax.ru</link>
+    <description>Интерфакс</description>
+    <image>
+      <url>https://www.interfax.ru/img/logo200.png</url>
+      <title>Интерфакс</title>
+      <link>https://www.interfax.ru</link>
+    </image>
+    <item>
+      <title>Еще пять человек обратились за медпомощью после атаки на промзону в Ельце</title>
+      <link>https://www.interfax.ru/russia/1124907</link>
+      <description>Губернатор Липецкой области Игрь Артамонов сообщил, что еще пять человек пострадали при атаке на промышленную зону в Ельце."Всего к настоящему моменту за медицинской помощью, кроме Дмитрия (еще один пострадавший - ИФ), обратились еще пять человек.</description>
+      <category>В России</category>
+      <pubDate>Sun, 25 Oct 2026 21:52:00 +0300</pubDate>
+      <guid>https://www.interfax.ru/russia/1124907</guid>
+    </item><item>
+      <title>Аэропорт Внуково работает по согласованию</title>
+      <link>https://www.interfax.ru/russia/1124906</link>
+      <description>Московский аэропорт Внуково обслуживает рейсы по согласованию с соответствующими органами в связи с введением временных ограничений на использование воздушного пространства, сообщает Росавиация в воскресенье вечером."Меры приняты для обеспечения безопасности полетов", - говорится в сообщении агентства в Мах.</description>
+      <category>В России</category>
+      <pubDate>Sun, 25 Oct 2026 21:45:00 +0300</pubDate>
+      <guid>https://www.interfax.ru/russia/1124906</guid>
+    </item><item>
+      <title>"Зенит" обыграл махачкалинское "Динамо" и вернулся на первое место в РПЛ</title>
+      <link>https://www.sport-interfax.ru/1124905</link>
+      <description>Петербургский "Зенит" в домашнем матче 12-го Российской премьер-лиги обыграл махачкалинское "Динамо" со счетом 2:0.</description>
+      <category>Спорт</category>
+      <pubDate>Sun, 25 Oct 2026 21:06:00 +0300</pubDate>
+      <guid>https://www.sport-interfax.ru/1124905</guid>
+    </item></channel></rss>

@@ -289,11 +289,13 @@ class FakeGenerator:
         *,
         fail_draft: Exception | None = None,
         delay_s: float = 0.0,
+        adjustments: AdjustmentList | None = None,
     ) -> None:
         self.drafts = list(drafts or [])
         self.checks = list(checks or [])
         self.fail_draft = fail_draft
         self.delay_s = delay_s
+        self.adjustments = adjustments
         self.draft_calls: list[list[str]] = []
         self.check_calls = 0
         self._offline = OfflineGenerator()
@@ -329,7 +331,7 @@ class FakeGenerator:
         role: Role,
         items: list[tuple[NewsItem, ImportanceScore]],
     ) -> AdjustmentList:
-        return AdjustmentList(adjustments=[])
+        return self.adjustments or AdjustmentList(adjustments=[])
 
 
 @pytest.fixture
@@ -399,6 +401,7 @@ def make_client(settings: Settings) -> Callable[..., Any]:
             generator=kwargs.pop("generator", OfflineGenerator()),
             retriever=kwargs.pop("retriever", NullRetriever()),
             datasets=kwargs.pop("datasets", NullDatasetStore()),
+            fetcher=kwargs.pop("fetcher", None),
         )
 
         class _Client:
