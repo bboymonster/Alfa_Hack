@@ -7,7 +7,7 @@ from fastapi import FastAPI
 
 from ai_service import __version__
 from ai_service.agent.graph import InsightPipeline
-from ai_service.api import health, insight
+from ai_service.api import health, insight, reports
 from ai_service.app_context import AppContext
 from ai_service.config import Settings, get_settings
 from ai_service.datasets.store import Datasets, build_datasets
@@ -75,6 +75,7 @@ def create_app(
     install_error_handlers(application)
     application.include_router(health.router)
     application.include_router(insight.router)
+    application.include_router(reports.router)
     return application
 
 
