@@ -1,0 +1,499 @@
+openapi: 3.1.0
+info:
+  title: Alfa News Insights — AI-Service
+  version: 0.1.0
+  description: >
+    Генерация инсайтов «Новость → Инсайт», чат по карточке, оценка важности, сбор новостей
+    и поиск по отчётам Альфа-Банка. Сервис stateless: контекст компании и новости приходит
+    в запросе. Все тексты для пользователя на русском. Ответы помечены `mode`:
+    `llm` (реальная модель из Приложения 3 ТЗ) или `offline` (детерминированная заглушка).
+servers:
+  - url: http://localhost:8001
+paths:
+  /health:
+    get:
+      summary: Состояние сервиса
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+  /v1/insight:
+    post:
+      summary: Инсайт по новости для компании и роли (6 вопросов ТЗ)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InsightRequest" }
+      responses:
+        "200":
+          description: Инсайт
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InsightResponse" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "502": { $ref: "#/components/responses/LlmError" }
+        "504": { $ref: "#/components/responses/LlmTimeout" }
+  /v1/ask:
+    post:
+      summary: Вопрос пользователя по карточке
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AskRequest" }
+      responses:
+        "200":
+          description: Ответ
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AskResponse" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "502": { $ref: "#/components/responses/LlmError" }
+        "504": { $ref: "#/components/responses/LlmTimeout" }
+  /v1/score:
+    post:
+      summary: Оценка важности новостей для компании и роли (пакетно)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ScoreRequest" }
+      responses:
+        "200":
+          description: Оценки в порядке входа
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ScoreResponse" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /v1/news/collect:
+    post:
+      summary: Собрать и нормализовать новости из настроенных источников
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CollectRequest" }
+      responses:
+        "200":
+          description: Новости и отчёт о сборе
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CollectResponse" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /v1/reports:
+    get:
+      summary: Проиндексированные отчёты банка
+      responses:
+        "200":
+          description: Список
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [corpus_available, reports]
+                properties:
+                  corpus_available: { type: boolean }
+                  reports:
+                    type: array
+                    items: { $ref: "#/components/schemas/ReportDocument" }
+  /v1/reports/search:
+    get:
+      summary: Поиск по корпусу отчётов
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string, minLength: 1, maxLength: 500 } }
+        - { name: k, in: query, schema: { type: integer, minimum: 1, maximum: 20, default: 5 } }
+      responses:
+        "200":
+          description: Фрагменты
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SearchResponse" }
+        "503": { $ref: "#/components/responses/CorpusError" }
+
+components:
+  responses:
+    ValidationError:
+      description: Неверные поля запроса
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    LlmError:
+      description: Провайдер модели вернул ошибку после ретраев
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    LlmTimeout:
+      description: Превышен лимит времени генерации
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+    CorpusError:
+      description: Индекс корпуса недоступен
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+
+  schemas:
+    Role:
+      type: string
+      enum: [CEO, CFO, ACCOUNTANT]
+    Mode:
+      type: string
+      enum: [llm, offline]
+    NewsCategory:
+      type: string
+      enum: [monetary_policy, inflation, labor_market, regulation_tax, logistics_trade,
+             industry_markets, consumer_demand, commodities, other]
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, request_id]
+          properties:
+            code:
+              type: string
+              enum: [validation_error, llm_timeout, llm_error, corpus_error, internal_error]
+            message: { type: string }
+            request_id: { type: string }
+            details: { type: array, items: { type: object } }
+
+    Health:
+      type: object
+      required: [status, mode, version, corpus]
+      properties:
+        status: { type: string, enum: [ok] }
+        mode: { $ref: "#/components/schemas/Mode" }
+        version: { type: string }
+        models:
+          type: object
+          additionalProperties: { type: string }
+          description: слот → id модели; пусто в offline
+        corpus:
+          type: object
+          required: [available, reports, chunks]
+          properties:
+            available: { type: boolean }
+            reports: { type: integer }
+            chunks: { type: integer }
+            indexed_at: { type: string, format: date-time, nullable: true }
+        ocr_available: { type: boolean }
+
+    NewsItem:
+      type: object
+      required: [id, title, summary_facts, source, published_at, category]
+      properties:
+        id: { type: string }
+        title: { type: string, minLength: 1, maxLength: 500 }
+        summary_facts: { type: string, minLength: 1, maxLength: 4000 }
+        full_text: { type: string, nullable: true, maxLength: 20000 }
+        source: { type: string }
+        source_url: { type: string, format: uri, nullable: true }
+        published_at: { type: string, format: date-time }
+        category: { type: string }
+        topic: { $ref: "#/components/schemas/NewsCategory", nullable: true }
+
+    Counterparty:
+      type: object
+      required: [synthetic_u, direction, pay_amt, pay_cnt]
+      properties:
+        synthetic_u: { type: string }
+        direction: { type: string, enum: [payer, beneficiary] }
+        pay_amt: { type: number }
+        pay_cnt: { type: integer }
+        mainokved_code: { type: string, nullable: true }
+        mainokved_name: { type: string, nullable: true }
+
+    CompanyProfile:
+      type: object
+      description: Поля датасета df_Uid_data_hack.csv; маркеры принимаются как boolean или 0.0/1.0
+      required: [synthetic_u, name, mainokved_code, mainokved_name, revenue_company,
+                 cl_product_loa_mark, fts_flag]
+      properties:
+        synthetic_u: { type: string }
+        name: { type: string }
+        org_type: { type: string, nullable: true }
+        okfs_name: { type: string, nullable: true }
+        company_age_years_gradation: { type: string, nullable: true }
+        eco_mark_label: { type: string, nullable: true }
+        mainokved_code: { type: string }
+        mainokved_name: { type: string }
+        negativemark: { type: boolean, default: false }
+        amount_workers_fns_gradation: { type: string, nullable: true }
+        amount_workers_spark_gradation: { type: string, nullable: true }
+        cl_type: { type: string, nullable: true }
+        cl_product_rko_mark: { type: boolean, default: false }
+        cl_product_gar_mark: { type: boolean, default: false }
+        cl_product_loa_mark: { type: boolean }
+        cl_product_lea_mark: { type: boolean, default: false }
+        cl_product_dep_mark: { type: boolean, default: false }
+        cl_product_zpp_mark: { type: boolean, default: false }
+        fts_flag: { type: boolean }
+        fts_country_name: { type: string, nullable: true }
+        factoring_mark: { type: boolean, default: false }
+        revenue_company: { type: number, minimum: 0 }
+        group_id: { type: string, nullable: true }
+        city: { type: string, nullable: true }
+        region: { type: string, nullable: true }
+        counterparties:
+          type: array
+          items: { $ref: "#/components/schemas/Counterparty" }
+          default: []
+
+    InsightOptions:
+      type: object
+      properties:
+        top_k: { type: integer, minimum: 1, maximum: 10, default: 5 }
+        enrich_from_datasets: { type: boolean, default: true,
+          description: дополнять профиль и контрагентов из локальных CSV, если настроены }
+
+    InsightRequest:
+      type: object
+      required: [news, company, role]
+      properties:
+        news: { $ref: "#/components/schemas/NewsItem" }
+        company: { $ref: "#/components/schemas/CompanyProfile" }
+        role: { $ref: "#/components/schemas/Role" }
+        options: { $ref: "#/components/schemas/InsightOptions" }
+
+    BankPosition:
+      type: object
+      required: [statement, report_title, report_file, page, chunk_id, quote, score]
+      properties:
+        statement: { type: string }
+        report_title: { type: string }
+        report_file: { type: string }
+        page: { type: integer, minimum: 1 }
+        chunk_id: { type: string }
+        quote: { type: string, maxLength: 400 }
+        score: { type: number }
+
+    SixQuestions:
+      type: object
+      required: [q1_what_happened, q2_why_matters_for_company, q3_risks, q3_opportunities,
+                 q4_relevant_actions, q6_basis]
+      properties:
+        q1_what_happened: { type: string }
+        q2_why_matters_for_company: { type: string }
+        q3_risks: { type: array, items: { type: string }, maxItems: 5 }
+        q3_opportunities: { type: array, items: { type: string }, maxItems: 5 }
+        q4_relevant_actions: { type: array, items: { type: string }, minItems: 1, maxItems: 5 }
+        q5_alfa_bank_position: { $ref: "#/components/schemas/BankPosition", nullable: true }
+        q6_basis: { type: string }
+
+    MatchedFeature:
+      type: object
+      required: [feature, value, why]
+      properties:
+        feature: { type: string, description: имя поля датасета, например CL_PRODUCT_LOA_MARK }
+        value: { type: string }
+        why: { type: string }
+
+    SourceRef:
+      type: object
+      required: [kind, title]
+      properties:
+        kind: { type: string, enum: [news, report] }
+        title: { type: string }
+        url: { type: string, nullable: true }
+        page: { type: integer, nullable: true }
+        chunk_id: { type: string, nullable: true }
+
+    CheckReport:
+      type: object
+      required: [passed, violations, attempts, fixed]
+      properties:
+        passed: { type: boolean }
+        violations: { type: array, items: { type: string } }
+        attempts: { type: integer }
+        fixed: { type: array, items: { type: string } }
+
+    Traceability:
+      type: object
+      required: [matched_company_features, verified_sources, agent_steps, self_check,
+                 confidence, corpus_available, mode, prompt_version]
+      properties:
+        matched_company_features:
+          type: array
+          items: { $ref: "#/components/schemas/MatchedFeature" }
+        verified_sources:
+          type: array
+          items: { $ref: "#/components/schemas/SourceRef" }
+        agent_steps: { type: array, items: { type: string } }
+        self_check: { $ref: "#/components/schemas/CheckReport" }
+        confidence: { type: number, minimum: 0, maximum: 1 }
+        corpus_available: { type: boolean }
+        truncated_inputs: { type: array, items: { type: string }, default: [] }
+        mode: { $ref: "#/components/schemas/Mode" }
+        prompt_version: { type: string }
+        models:
+          type: object
+          additionalProperties: { type: string }
+
+    Card:
+      type: object
+      description: Публичный формат backend `Insight` (02-backend/app/schemas.py), 1:1
+      required: [why_it_matters, risks, opportunities, action_item, traceability]
+      properties:
+        why_it_matters: { type: string }
+        risks: { type: array, items: { type: string } }
+        opportunities: { type: array, items: { type: string } }
+        action_item: { type: string }
+        alfa_bank_position: { type: string, nullable: true }
+        alfa_report_name: { type: string, nullable: true }
+        alfa_report_page: { type: integer, nullable: true }
+        alfa_report_url: { type: string, nullable: true }
+        traceability:
+          type: object
+          required: [matched_company_features, verified_sources]
+          properties:
+            matched_company_features: { type: array, items: { type: string } }
+            verified_sources: { type: array, items: { type: string } }
+
+    ScoreFactor:
+      type: object
+      required: [name, delta, explanation]
+      properties:
+        name: { type: string }
+        delta: { type: integer }
+        explanation: { type: string }
+
+    ImportanceScore:
+      type: object
+      required: [news_id, score, factors]
+      properties:
+        news_id: { type: string }
+        score: { type: integer, minimum: 1, maximum: 10 }
+        factors: { type: array, items: { $ref: "#/components/schemas/ScoreFactor" } }
+
+    InsightResponse:
+      type: object
+      required: [request_id, mode, insight, card, importance, traceability, latency_ms]
+      properties:
+        request_id: { type: string }
+        mode: { $ref: "#/components/schemas/Mode" }
+        insight: { $ref: "#/components/schemas/SixQuestions" }
+        card: { $ref: "#/components/schemas/Card" }
+        importance: { $ref: "#/components/schemas/ImportanceScore" }
+        traceability: { $ref: "#/components/schemas/Traceability" }
+        latency_ms: { type: integer }
+
+    AskRequest:
+      type: object
+      required: [news, card, company, role, question]
+      properties:
+        news: { $ref: "#/components/schemas/NewsItem" }
+        card: { $ref: "#/components/schemas/Card" }
+        company: { $ref: "#/components/schemas/CompanyProfile" }
+        role: { $ref: "#/components/schemas/Role" }
+        question: { type: string, minLength: 1, maxLength: 2000 }
+
+    AskResponse:
+      type: object
+      required: [request_id, mode, answer, sources, on_topic]
+      properties:
+        request_id: { type: string }
+        mode: { $ref: "#/components/schemas/Mode" }
+        answer: { type: string }
+        sources: { type: array, items: { $ref: "#/components/schemas/SourceRef" } }
+        on_topic: { type: boolean }
+
+    ScoreRequest:
+      type: object
+      required: [company, role, news]
+      properties:
+        company: { $ref: "#/components/schemas/CompanyProfile" }
+        role: { $ref: "#/components/schemas/Role" }
+        news:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items: { $ref: "#/components/schemas/NewsItem" }
+
+    ScoreResponse:
+      type: object
+      required: [request_id, mode, scores]
+      properties:
+        request_id: { type: string }
+        mode: { $ref: "#/components/schemas/Mode" }
+        scores: { type: array, items: { $ref: "#/components/schemas/ImportanceScore" } }
+
+    CollectRequest:
+      type: object
+      properties:
+        sources: { type: array, items: { type: string }, nullable: true,
+          description: имена источников из конфигурации; null = все включённые }
+        since: { type: string, format: date-time, nullable: true }
+        exclude_urls: { type: array, items: { type: string, format: uri }, maxItems: 5000, default: [] }
+        limit: { type: integer, minimum: 1, maximum: 500, default: 100 }
+
+    SourceStatus:
+      type: object
+      required: [name, ok, fetched, latency_ms]
+      properties:
+        name: { type: string }
+        ok: { type: boolean }
+        fetched: { type: integer }
+        error: { type: string, nullable: true }
+        latency_ms: { type: integer }
+
+    CollectResponse:
+      type: object
+      required: [request_id, mode, items, report]
+      properties:
+        request_id: { type: string }
+        mode: { $ref: "#/components/schemas/Mode" }
+        items: { type: array, items: { $ref: "#/components/schemas/NewsItem" } }
+        report:
+          type: object
+          required: [sources, returned, duplicates_dropped, irrelevant_dropped, older_dropped]
+          properties:
+            sources: { type: array, items: { $ref: "#/components/schemas/SourceStatus" } }
+            returned: { type: integer }
+            duplicates_dropped: { type: integer }
+            irrelevant_dropped: { type: integer }
+            older_dropped: { type: integer }
+
+    ReportDocument:
+      type: object
+      required: [report_id, title, file, pages, chunks, indexed_at, extractor]
+      properties:
+        report_id: { type: string }
+        title: { type: string }
+        file: { type: string }
+        pages: { type: integer }
+        chunks: { type: integer }
+        indexed_at: { type: string, format: date-time }
+        extractor: { type: string, enum: [text, ocr] }
+
+    ReportChunk:
+      type: object
+      required: [chunk_id, report_id, title, file, page, index, text]
+      properties:
+        chunk_id: { type: string }
+        report_id: { type: string }
+        title: { type: string }
+        file: { type: string }
+        page: { type: integer }
+        index: { type: integer }
+        text: { type: string }
+        topics:
+          type: array
+          items: { $ref: "#/components/schemas/NewsCategory" }
+          default: []
+          description: темы отчёта из каталога (reports_catalog.yaml)
+        score: { type: number, nullable: true }
+        dense_score: { type: number, nullable: true }
+
+    SearchResponse:
+      type: object
+      required: [query, results, corpus_available]
+      properties:
+        query: { type: string }
+        results: { type: array, items: { $ref: "#/components/schemas/ReportChunk" } }
+        corpus_available: { type: boolean }

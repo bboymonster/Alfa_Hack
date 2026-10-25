@@ -29,10 +29,17 @@
 - **SQLAlchemy / Alembic** (MIT License) — ORM и миграции базы данных.
 - **PyJWT / Passlib / Bcrypt** (MIT / BSD License) — хеширование паролей и JWT-авторизация.
 
-### AI & Data
-- **LangChain / LiteLLM** (MIT License) — оркестрация вызовов LLM.
-- **PyPDF / pdfplumber** (MIT License) — парсинг PDF-отчетов.
-- **Pandas / NumPy** (BSD License) — обработка табличных данных.
+### AI & Data (03-ai-service)
+- **LangChain / LangGraph / langchain-openai** (MIT License) — граф агента и вызовы LLM через OpenAI-совместимый API.
+- **FastAPI, Uvicorn, Pydantic, pydantic-settings** (MIT / BSD) — HTTP-сервис и схемы.
+- **structlog** (MIT / Apache-2.0) — структурированные логи.
+- **Qdrant Client** (Apache-2.0) — embedded-векторное хранилище для RAG.
+- **FastEmbed** (Apache-2.0) и модели `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` (Apache-2.0), `Qdrant/bm25` — эмбеддинги без torch (ONNX).
+- **PyMuPDF** (AGPL-3.0; коммерческая лицензия у Artifex) — рендер страниц PDF для OCR.
+- **pytesseract** (Apache-2.0) + **Tesseract OCR** (Apache-2.0, системный пакет) — распознавание сканов отчетов.
+- **feedparser** (BSD-2-Clause), **httpx** (BSD-3-Clause) — загрузка и разбор RSS.
+- **Pandas / NumPy** (BSD License) — обработка CSV-датасетов кейса.
+- **PyYAML** (MIT) — каталог отчетов.
 
 ---
 
