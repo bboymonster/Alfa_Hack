@@ -26,7 +26,7 @@ class Settings(BaseSettings):
 
     # 03-ai-service: базовый адрес, таймаут и возможность полностью отключить AI.
     ai_service_url: str = "http://localhost:8001"
-    ai_service_timeout_s: float = Field(default=60.0, gt=0, le=300)
+    ai_service_timeout_s: float = Field(default=130.0, gt=0, le=300)
     ai_service_enabled: bool = True
     ai_service_retry_interval_s: float = Field(default=15.0, gt=0, le=300)
 

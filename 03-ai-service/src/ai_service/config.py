@@ -4,11 +4,23 @@
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 SERVICE_DIR = Path(__file__).resolve().parents[2]
 REPO_ROOT = SERVICE_DIR.parent
+
+# Точные идентификаторы из инструкции организаторов (Приложение 3).
+ALLOWED_LLM_MODELS = frozenset(
+    {
+        "google/gemma-4-26b-a4b-it",
+        "z-ai/glm-5.3-flash",
+        "qwen/qwen3.6-35b-a3b",
+        "deepseek/deepseek-v4.1-flash",
+        "qwen/qwen3-vl-30b-a3b-instruct",
+        "moonshotai/kimi-k2.6",
+    }
+)
 
 
 class Settings(BaseSettings):
@@ -20,18 +32,19 @@ class Settings(BaseSettings):
     )
 
     # --- LLM
-    llm_base_url: str = "https://openrouter.ai/api/v1"
-    llm_api_key: str = ""
-    llm_model_main: str = "deepseek/deepseek-v4.1-flash"
+    llm_base_url: str = "https://changellenge.up.railway.app/v1"
+    llm_api_key: SecretStr = SecretStr("")
+    llm_model_main: str = "qwen/qwen3.6-35b-a3b"
     llm_model_fast: str = "google/gemma-4-26b-a4b-it"
     llm_model_checker: str = "z-ai/glm-5.3-flash"
-    llm_timeout_s: float = Field(default=30.0, gt=0)
+    llm_timeout_s: float = Field(default=60.0, gt=0)
     llm_max_retries: int = Field(default=3, ge=1, le=10)
-    llm_max_tokens: int = Field(default=2000, ge=256)
-    insight_timeout_s: float = Field(default=60.0, gt=0)
+    llm_max_tokens: int = Field(default=4000, ge=256)
+    llm_reasoning_enabled: bool = False
+    insight_timeout_s: float = Field(default=120.0, gt=0)
     chat_timeout_s: float = Field(default=45.0, gt=0)
     score_llm_adjust: bool = True
-    prompt_version: str = "2026-10-25.1"
+    prompt_version: str = "2026-10-26.1"
 
     # --- Данные
     articles_dir: Path = Path("data/articles")
@@ -59,6 +72,14 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     log_format: str = "json"
 
+    @field_validator("llm_model_main", "llm_model_fast", "llm_model_checker")
+    @classmethod
+    def _allowed_model(cls, value: str) -> str:
+        value = value.strip()
+        if value not in ALLOWED_LLM_MODELS:
+            raise ValueError("Модель отсутствует в разрешённом списке Приложения 3")
+        return value
+
     @field_validator("news_sources_enabled", mode="before")
     @classmethod
     def _split_csv(cls, value: object) -> object:
@@ -73,7 +94,7 @@ class Settings(BaseSettings):
 
     @property
     def llm_enabled(self) -> bool:
-        return bool(self.llm_api_key.strip())
+        return bool(self.llm_api_key.get_secret_value().strip())
 
     @property
     def ocr_cache_dir(self) -> Path:

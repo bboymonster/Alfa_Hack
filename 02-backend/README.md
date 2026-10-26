@@ -117,7 +117,7 @@ python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 |---|---|---|
 | `AI_SERVICE_ENABLED` | `true` | `false` отключает сетевые вызовы AI |
 | `AI_SERVICE_URL` | `http://localhost:8001` | Адрес AI; внутри Compose — `http://ai-service:8001` |
-| `AI_SERVICE_TIMEOUT_S` | `60` | Таймаут одного HTTP-вызова |
+| `AI_SERVICE_TIMEOUT_S` | `130` | Таймаут одного HTTP-вызова (больше полного лимита AI-сервиса 120 с) |
 | `AI_SERVICE_RETRY_INTERVAL_S` | `15` | Пауза между попытками обогащения при сетевом сбое или 5xx |
 
 Сначала сервер отдаёт готовую ленту из памяти. После запуска приложения один

@@ -1,103 +1,123 @@
-import { useState } from 'react'
+import { useState } from "react";
+import Icon from "./Icon";
 
 export default function Login({ onLogin }) {
-  const [email, setEmail] = useState('alfa-hack-2026')
-  const [password, setPassword] = useState('password123')
-  const [showPassword, setShowPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [email, setEmail] = useState("alfa-hack-2026");
+  const [password, setPassword] = useState("password123");
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  async function handleSubmit(e) {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
+  async function handleSubmit(event) {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
     try {
-      await onLogin(email, password)
+      await onLogin(email, password);
     } catch (err) {
-      setError(err?.message || 'Не удалось войти. Проверьте логин и пароль.')
+      setError(err?.message || "Не удалось войти. Проверьте логин и пароль.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[--color-surface] via-[--color-surface-elev] to-[--color-surface] flex items-center justify-center px-4">
-      <div className="w-full max-w-md space-y-8 animate-fadeIn">
-        {/* Логотип */}
-        <div className="flex items-center justify-center gap-3 text-center">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[--color-alfa-red] to-[--color-alfa-gold] flex items-center justify-center font-bold text-white text-2xl shadow-lg shadow-[--color-alfa-red]/30">
-            А
-          </div>
-          <div>
-            <h1 className="text-3xl font-extrabold text-white leading-tight">Альфа‑Инсайт</h1>
-            <p className="text-[--color-text-dim] text-sm">Новостная аналитика для бизнеса</p>
-          </div>
+    <main className="login-page">
+      <section className="login-intro">
+        <div className="brand">
+          <span className="brand-mark">
+            А<span />
+          </span>
+          <span>
+            Альфа / <strong>Инсайт</strong>
+          </span>
         </div>
-
-        {/* Карточка входа */}
-        <div className="relative rounded-2xl p-0.5 bg-gradient-to-br from-[--color-border] via-[--color-alfa-red]/20 to-[--color-border] shadow-2xl shadow-black/40">
-          <div className="bg-[--color-surface-card] rounded-2xl p-8">
-            <h2 className="text-xl font-semibold text-white mb-6">Вход в «Альфа‑Бизнес»</h2>
-
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium text-[--color-text-dim] mb-1.5">Логин (email)</label>
-                <input
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-[--color-surface-elev] border border-[--color-border] rounded-lg text-white text-sm transition-colors"
-                  placeholder="alfa-hack-2026"
-                  autoComplete="username"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-[--color-text-dim] mb-1.5">Пароль</label>
-                <div className="relative">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-4 py-2.5 pr-11 bg-[--color-surface-elev] border border-[--color-border] rounded-lg text-white text-sm transition-colors"
-                    placeholder="••••••••"
-                    autoComplete="current-password"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[--color-text-dim] hover:text-[--color-text] transition-colors"
-                    aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
-                  >
-                    {showPassword ? '○' : '●'}
-                  </button>
-                </div>
-              </div>
-
-              {error && (
-                <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
-                  {error}
-                </div>
-              )}
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-gradient-to-r from-[--color-alfa-red] to-[--color-alfa-red-hover] hover:brightness-110 disabled:opacity-60 text-white py-2.5 rounded-lg font-medium shadow-lg shadow-[--color-alfa-red]/25 transition-all duration-150"
-              >
-                {loading ? 'Входим…' : 'Войти'}
-              </button>
-            </form>
-
-            <p className="mt-6 text-center text-xs text-[--color-text-dim]">
-              Тестовый аккаунт жюри:{' '}
-              <span className="text-[--color-text]">alfa-hack-2026</span> /{' '}
-              <span className="text-[--color-text]">password123</span>
+        <div className="login-story">
+          <span className="eyebrow">ДЛЯ ТЕХ, КТО ПРИНИМАЕТ РЕШЕНИЯ</span>
+          <h1>
+            Меньше новостей.
+            <br />
+            <span>Больше смысла.</span>
+          </h1>
+          <p>
+            Главное для вашей компании: что произошло, как это повлияет на
+            бизнес и что можно сделать.
+          </p>
+          <div className="login-preview">
+            <span className="badge">
+              <Icon name="spark" size={14} /> Персональный инсайт
+            </span>
+            <h2>Контекст превращает новость в решение</h2>
+            <p>
+              Отрасль, профиль компании и ваша роль — в основе каждого разбора.
             </p>
+            <div className="preview-flow">
+              <span>Новость</span>
+              <Icon name="arrow" size={16} />
+              <span>Ваш бизнес</span>
+              <Icon name="arrow" size={16} />
+              <strong>Следующий шаг</strong>
+            </div>
           </div>
         </div>
-      </div>
-    </div>
-  )
+        <span className="login-footnote">
+          Проект команды · Альфа-Будущее Хакатон 2026
+        </span>
+      </section>
+      <section className="login-form-side">
+        <div className="login-form-card">
+          <span className="eyebrow">ДОБРО ПОЖАЛОВАТЬ</span>
+          <h2>Войти в Инсайт</h2>
+          <p className="muted">Ваша повестка начинается здесь.</p>
+          <form onSubmit={handleSubmit}>
+            <label htmlFor="login-email">Логин</label>
+            <input
+              id="login-email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              autoComplete="username"
+              required
+            />
+            <label htmlFor="login-password">Пароль</label>
+            <div className="password-field">
+              <input
+                id="login-password"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                autoComplete="current-password"
+                required
+              />
+              <button
+                type="button"
+                className="icon-button"
+                onClick={() => setShowPassword((value) => !value)}
+                aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
+                aria-pressed={showPassword}
+              >
+                <Icon name="eye" />
+              </button>
+            </div>
+            {error && (
+              <p className="error-message" role="alert">
+                {error}
+              </p>
+            )}
+            <button
+              className="button button-primary login-submit"
+              disabled={loading}
+            >
+              {loading ? "Входим…" : "Продолжить"}
+              <Icon name="arrow" size={18} />
+            </button>
+          </form>
+          <div className="demo-account">
+            <strong>Тестовый аккаунт жюри</strong>
+            <span>alfa-hack-2026 / password123</span>
+            <span>Данные уже заполнены — нажмите «Продолжить».</span>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
 }

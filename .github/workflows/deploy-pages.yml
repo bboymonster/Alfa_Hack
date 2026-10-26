@@ -36,6 +36,8 @@ jobs:
       - name: Build
         run: npm run build
         working-directory: 01-frontend
+        env:
+          VITE_DEMO_MODE: 'true'
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -4,7 +4,6 @@ from dataclasses import dataclass
 
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import ChatOpenAI
-from pydantic import SecretStr
 
 from ai_service.config import Settings
 from ai_service.llm.callbacks import LlmLogCallback
@@ -27,11 +26,18 @@ def _chat_model(settings: Settings, slot: str, model: str) -> BaseChatModel:
     return ChatOpenAI(
         model=model,
         base_url=settings.llm_base_url,
-        api_key=SecretStr(settings.llm_api_key),
+        api_key=settings.llm_api_key,
         timeout=settings.llm_timeout_s,
         max_retries=0,
         max_tokens=settings.llm_max_tokens,
         temperature=0,
+        # Шлюз поддерживает reasoning как OpenRouter. Иначе Qwen/GLM тратят
+        # лимит ответа на thinking и обрывают JSON (проверено на реальном API).
+        extra_body=(
+            {"reasoning": {"enabled": settings.llm_reasoning_enabled}}
+            if model != "google/gemma-4-26b-a4b-it"
+            else None
+        ),
         callbacks=[LlmLogCallback(slot, model)],
     )
 
