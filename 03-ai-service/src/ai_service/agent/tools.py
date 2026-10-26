@@ -180,5 +180,7 @@ def _relevance(chunk: ReportChunk) -> float | None:
 
 
 def _passes(chunk: ReportChunk, min_score: float) -> bool:
+    # Без косинусной оценки гейт слабой релевантности не пройден: RRF-скор с бонусами
+    # ре-ранка не сравним с порогом и пропускал бы лексические совпадения с заголовком.
     relevance = _relevance(chunk)
-    return relevance is None or relevance >= min_score
+    return relevance is not None and relevance >= min_score

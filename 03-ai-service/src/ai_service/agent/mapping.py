@@ -1,5 +1,7 @@
 """Маппинг внутренних шести вопросов в публичную карточку backend и сборка трассировки."""
 
+from urllib.parse import quote
+
 from ai_service.schemas.common import MatchedFeature, Mode, SourceRef
 from ai_service.schemas.insight import (
     Card,
@@ -13,7 +15,9 @@ from ai_service.schemas.reports import ReportChunk
 
 
 def report_url(file: str, page: int) -> str:
-    return f"/articles/{file}#page={page}"
+    # PDF раздаёт ai-service по /articles (frontend-nginx проксирует туда же);
+    # имена файлов кириллические — кодируем.
+    return f"/articles/{quote(file)}#page={page}"
 
 
 def verified_sources(

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Icon from "./Icon";
 
 export default function Login({ onLogin }) {
@@ -7,15 +7,24 @@ export default function Login({ onLogin }) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const errorRef = useRef(null);
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (loading) return;
+    const login = email.trim();
+    if (!login || !password) {
+      setError("Введите логин и пароль.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
-      await onLogin(email, password);
+      await onLogin(login, password);
     } catch (err) {
       setError(err?.message || "Не удалось войти. Проверьте логин и пароль.");
+      // Сообщение озвучит скринридер, а фокус вернётся к полю для исправления.
+      window.setTimeout(() => errorRef.current?.focus(), 0);
     } finally {
       setLoading(false);
     }
@@ -40,17 +49,15 @@ export default function Login({ onLogin }) {
             <span>Больше смысла.</span>
           </h1>
           <p>
-            Главное для вашей компании: что произошло, как это повлияет на
-            бизнес и что можно сделать.
+            Главное для вашей компании: что произошло, как это повлияет на бизнес и
+            что можно сделать.
           </p>
           <div className="login-preview">
             <span className="badge">
               <Icon name="spark" size={14} /> Персональный инсайт
             </span>
             <h2>Контекст превращает новость в решение</h2>
-            <p>
-              Отрасль, профиль компании и ваша роль — в основе каждого разбора.
-            </p>
+            <p>Отрасль, профиль компании и ваша роль — в основе каждого разбора.</p>
             <div className="preview-flow">
               <span>Новость</span>
               <Icon name="arrow" size={16} />
@@ -60,22 +67,24 @@ export default function Login({ onLogin }) {
             </div>
           </div>
         </div>
-        <span className="login-footnote">
-          Проект команды · Альфа-Будущее Хакатон 2026
-        </span>
+        <span className="login-footnote">Проект команды · Альфа-Будущее Хакатон 2026</span>
       </section>
       <section className="login-form-side">
         <div className="login-form-card">
           <span className="eyebrow">ДОБРО ПОЖАЛОВАТЬ</span>
           <h2>Войти в Инсайт</h2>
           <p className="muted">Ваша повестка начинается здесь.</p>
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} noValidate aria-busy={loading}>
             <label htmlFor="login-email">Логин</label>
             <input
               id="login-email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
+              disabled={loading}
+              aria-invalid={!!error}
               required
             />
             <label htmlFor="login-password">Пароль</label>
@@ -86,6 +95,8 @@ export default function Login({ onLogin }) {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 autoComplete="current-password"
+                disabled={loading}
+                aria-invalid={!!error}
                 required
               />
               <button
@@ -94,21 +105,28 @@ export default function Login({ onLogin }) {
                 onClick={() => setShowPassword((value) => !value)}
                 aria-label={showPassword ? "Скрыть пароль" : "Показать пароль"}
                 aria-pressed={showPassword}
+                disabled={loading}
               >
-                <Icon name="eye" />
+                <Icon name={showPassword ? "eyeOff" : "eye"} />
               </button>
             </div>
             {error && (
-              <p className="error-message" role="alert">
+              <p className="error-message" role="alert" tabIndex={-1} ref={errorRef}>
                 {error}
               </p>
             )}
             <button
+              type="submit"
               className="button button-primary login-submit"
               disabled={loading}
+              aria-busy={loading}
             >
               {loading ? "Входим…" : "Продолжить"}
-              <Icon name="arrow" size={18} />
+              {loading ? (
+                <span className="spinner spinner-on-primary" aria-hidden="true" />
+              ) : (
+                <Icon name="arrow" size={18} />
+              )}
             </button>
           </form>
           <div className="demo-account">

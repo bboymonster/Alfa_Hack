@@ -158,7 +158,7 @@ components:
           properties:
             code:
               type: string
-              enum: [validation_error, llm_timeout, llm_error, corpus_error, internal_error]
+              enum: [validation_error, llm_timeout, llm_error, corpus_error, not_found, request_error, internal_error]
             message: { type: string }
             request_id: { type: string }
             details: { type: array, items: { type: object } }

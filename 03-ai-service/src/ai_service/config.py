@@ -3,9 +3,13 @@
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Annotated
 
-from pydantic import Field, SecretStr, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, SecretStr, field_validator, model_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+LOG_LEVELS = frozenset({"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"})
+LOG_FORMATS = frozenset({"json", "console"})
 
 SERVICE_DIR = Path(__file__).resolve().parents[2]
 REPO_ROOT = SERVICE_DIR.parent
@@ -32,7 +36,7 @@ class Settings(BaseSettings):
     )
 
     # --- LLM
-    llm_base_url: str = "https://changellenge.up.railway.app/v1"
+    llm_base_url: str = Field(default="https://changellenge.up.railway.app/v1", min_length=1)
     llm_api_key: SecretStr = SecretStr("")
     llm_model_main: str = "qwen/qwen3.6-35b-a3b"
     llm_model_fast: str = "google/gemma-4-26b-a4b-it"
@@ -42,7 +46,8 @@ class Settings(BaseSettings):
     llm_max_tokens: int = Field(default=4000, ge=256)
     llm_reasoning_enabled: bool = False
     insight_timeout_s: float = Field(default=120.0, gt=0)
-    chat_timeout_s: float = Field(default=45.0, gt=0)
+    # Больше llm_timeout_s, чтобы один повтор после обрезанного JSON уложился в бюджет.
+    chat_timeout_s: float = Field(default=90.0, gt=0)
     score_llm_adjust: bool = True
     prompt_version: str = "2026-10-26.1"
 
@@ -64,7 +69,14 @@ class Settings(BaseSettings):
     max_full_text_chars: int = Field(default=6000, ge=500)
 
     # --- Сбор новостей
-    news_sources_enabled: list[str] = ["cbr_press", "cbr_news", "rbc", "interfax", "kommersant"]
+    # NoDecode: pydantic-settings иначе требует JSON в env, а значение задаётся через запятую.
+    news_sources_enabled: Annotated[list[str], NoDecode] = [
+        "cbr_press",
+        "cbr_news",
+        "rbc",
+        "interfax",
+        "kommersant",
+    ]
     news_sources_json: str = ""
     news_fetch_timeout_s: float = Field(default=15.0, gt=0)
 
@@ -86,6 +98,36 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
         return value
+
+    @field_validator("llm_base_url")
+    @classmethod
+    def _http_url(cls, value: str) -> str:
+        value = value.strip().rstrip("/")
+        if not value.startswith(("http://", "https://")):
+            raise ValueError("AI_LLM_BASE_URL должен начинаться с http:// или https://")
+        return value
+
+    @field_validator("log_level")
+    @classmethod
+    def _log_level(cls, value: str) -> str:
+        value = value.strip().upper()
+        if value not in LOG_LEVELS:
+            raise ValueError(f"AI_LOG_LEVEL: ожидается одно из {sorted(LOG_LEVELS)}")
+        return value
+
+    @field_validator("log_format")
+    @classmethod
+    def _log_format(cls, value: str) -> str:
+        value = value.strip().lower()
+        if value not in LOG_FORMATS:
+            raise ValueError(f"AI_LOG_FORMAT: ожидается одно из {sorted(LOG_FORMATS)}")
+        return value
+
+    @model_validator(mode="after")
+    def _chunking_consistent(self) -> "Settings":
+        if self.chunk_overlap >= self.chunk_max_chars:
+            raise ValueError("AI_CHUNK_OVERLAP должен быть меньше AI_CHUNK_MAX_CHARS")
+        return self
 
     @field_validator("articles_dir", "datasets_dir", "index_dir", "reports_catalog", mode="after")
     @classmethod
