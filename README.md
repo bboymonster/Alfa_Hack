@@ -186,12 +186,12 @@ git clone https://github.com/bboymonster/Alfa_Hack.git
 cd Alfa_Hack
 ```
 
-### 2. Запуск через Docker Compose (Рекомендуемый способ для жюри)
+### 2. Запуск через Docker Compose
 
 Единый воспроизводимый запуск всех компонентов — корневой `docker-compose.yml`:
 
 ```bash
-cp .env.example .env          # необязательно: есть безопасные значения по умолчанию
+cp .env.example .env          # создайте файл настроек перед первым запуском
 docker compose up --build -d
 ```
 
@@ -207,7 +207,7 @@ docker compose up --build -d
 
 | Логин | Пароль | Роль | Компания |
 |---|---|---|---|
-| `alfa-hack-2026` (аккаунт жюри) | `password123` | CEO | `U_1595` |
+| `alfa-hack-2026` | `password123` | CEO | `U_1595` |
 | `ceo@alfabusiness.ru` | `password123` | CEO | `U_1595` |
 | `cfo@alfabusiness.ru` | `password123` | CFO | `U_1595` |
 | `accountant@alfabusiness.ru` | `password123` | Главный бухгалтер | `U_1595` |
@@ -219,7 +219,10 @@ docker compose up --build -d
 настроены по [инструкции организаторов](https://docs.google.com/document/d/1ly8GsI_-oPnCQWvtZ4nGevnnDP2MGYIfpn2zOUFxZ_4/edit).
 Ключ используется только AI-сервисом, не попадает в frontend или Git.
 
-**Корпус отчётов Альфа-Банка (опционально, для цитат банка).** Положите PDF-отчёты
+Встроенные новости остаются демонстрационными даже при `insight.mode=llm`.
+В интерфейсе различаются «Демо · без LLM» и «Вывод AI · демо-новость».
+
+**Корпус отчётов Альфа-Банка.** Положите PDF-отчёты
 из материалов кейса в `articles/` (9 файлов) и постройте индекс один раз:
 
 ```bash
@@ -260,14 +263,3 @@ docker compose exec ai-service ai-service index-reports
    «★ Избранное».
 7. **Swagger.** Для технической проверки откройте `http://localhost:8000/docs`
    (backend) и `http://localhost:8001/docs` (AI-service).
-
-
-## Обновление от 26 октября 2026
-
-Светлая палитра в духе Альфа-Бизнеса, локальный Golos Text, короткие раскрывающиеся
-инсайты, поиск и фильтр по темам. Реальное API проверено через шлюз организаторов.
-[Что проверено и промпт для следующего участника](docs/TEAM_HANDOFF.md).
-
-Встроенные новости остаются демонстрационными даже при `insight.mode=llm`.
-В интерфейсе различаются «Демо · без LLM» и «Вывод AI · демо-новость».
-Отчёты банка не появляются без загрузки PDF и индексации корпуса.
