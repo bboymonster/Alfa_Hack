@@ -96,8 +96,8 @@ class Insight(BaseModel):
     # Агентная трассировка из 03-ai-service (шаги, самопроверка, уверенность, режим).
     agent_steps: list[str] | None = None
     self_check: SelfCheckReport | None = None
-    confidence: float | None = None
-    mode: str | None = None
+    confidence: float | None = Field(default=None, ge=0, le=1)
+    mode: Literal["mock", "offline", "llm"] | None = None
 
 
 class FeedItem(BaseModel):
@@ -133,10 +133,28 @@ class AskRequest(RequestBody):
     question: NonEmptyText = Field(max_length=2000)
 
 
+class SourceRef(BaseModel):
+    kind: Literal["news", "report"]
+    title: str
+    url: str | None = None
+    page: int | None = Field(default=None, ge=1)
+    chunk_id: str | None = None
+
+
 class AskResponse(BaseModel):
     feed_item_id: str
     answer: str
     is_demo: bool = True
+    mode: Literal["mock", "offline", "llm"] = "mock"
+    sources: list[SourceRef] = Field(default_factory=list)
+    on_topic: bool | None = None
+    request_id: str | None = None
+
+
+class EnrichmentStatus(BaseModel):
+    status: Literal["disabled", "pending", "running", "retrying", "complete", "failed", "stopped"]
+    completed: int
+    total: int
 
 
 class HealthResponse(BaseModel):
@@ -144,3 +162,6 @@ class HealthResponse(BaseModel):
     mode: str = "demo"
     storage: str = "memory"
     ai: str = "mock"
+    ai_status: Literal["disabled", "not_checked", "available", "unavailable"] = "disabled"
+    ai_mode: Literal["mock", "offline", "llm"] = "mock"
+    enrichment: EnrichmentStatus

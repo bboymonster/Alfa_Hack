@@ -77,6 +77,7 @@ def feed(
         page=page,
         page_size=page_size,
         total_pages=ceil(total / page_size),
+        is_demo=any(item.is_demo for item in items),
     )
 
 
@@ -103,12 +104,15 @@ def favorite(
     return FavoriteResponse(id=item_id, is_favorite=body.is_favorite)
 
 
-@router.post(
-    "/feed/{item_id}/ask", response_model=AskResponse, summary="Задать вопрос по карточке"
-)
+@router.post("/feed/{item_id}/ask", response_model=AskResponse, summary="Задать вопрос по карточке")
 def ask(item_id: str, body: AskRequest, request: Request, user: CurrentUser) -> AskResponse:
     item = find_item(request.app.state.store, item_id, user)
-    answer, is_demo = request.app.state.ai_client.answer_question(
-        item.news, item.insight, request.app.state.store.companies[item.company_id], item.role, body.question
+    answer = request.app.state.ai_client.answer_question(
+        item.news,
+        item.insight,
+        request.app.state.store.companies[item.company_id],
+        item.role,
+        body.question,
+        item_id=item.id,
     )
-    return AskResponse(feed_item_id=item.id, answer=answer, is_demo=is_demo)
+    return answer.model_copy(update={"is_demo": item.is_demo or answer.is_demo})
