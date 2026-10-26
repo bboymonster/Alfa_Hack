@@ -271,6 +271,7 @@ docker compose exec ai-service ai-service index-reports
 - Сборка Pages использует `VITE_DEMO_MODE=true` и **автономный демо-режим**
   (`src/demoData.js`): вход, смена компании и роли, чат и избранное работают в браузере.
 - Включение: в репозитории `Settings → Pages → Source: "GitHub Actions"`.
+- Без включённого Pages workflow проверяет lint/build и пропускает публикацию.
 
 ⚠️ Бесплатные GitHub Pages доступны для **публичных** репозиториев. Для приватного
 репозитория Pages требует платный план (GitHub Pro/Team) — в этом случае можно либо
