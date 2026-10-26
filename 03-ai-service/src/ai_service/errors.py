@@ -6,6 +6,7 @@ from typing import Any
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from ai_service.logging import get_logger
 
@@ -17,6 +18,8 @@ class ErrorCode(StrEnum):
     LLM_TIMEOUT = "llm_timeout"
     LLM_ERROR = "llm_error"
     CORPUS_ERROR = "corpus_error"
+    NOT_FOUND = "not_found"
+    REQUEST_ERROR = "request_error"
     INTERNAL_ERROR = "internal_error"
 
 
@@ -25,6 +28,8 @@ STATUS_BY_CODE: dict[ErrorCode, int] = {
     ErrorCode.LLM_TIMEOUT: 504,
     ErrorCode.LLM_ERROR: 502,
     ErrorCode.CORPUS_ERROR: 503,
+    ErrorCode.NOT_FOUND: 404,
+    ErrorCode.REQUEST_ERROR: 400,
     ErrorCode.INTERNAL_ERROR: 500,
 }
 
@@ -85,6 +90,21 @@ def install_error_handlers(app: FastAPI) -> None:
                 _request_id(request),
                 details,
             ),
+        )
+
+    @app.exception_handler(StarletteHTTPException)
+    async def _http_error(request: Request, exc: StarletteHTTPException) -> JSONResponse:
+        # 404/405 от роутера приходят в том же формате {"error": ...}, что и остальные ошибки.
+        if exc.status_code == 404:
+            code = ErrorCode.NOT_FOUND
+        elif exc.status_code >= 500:
+            code = ErrorCode.INTERNAL_ERROR
+        else:
+            code = ErrorCode.REQUEST_ERROR
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=_payload(code, str(exc.detail), _request_id(request)),
+            headers=dict(exc.headers or {}),
         )
 
     @app.exception_handler(Exception)

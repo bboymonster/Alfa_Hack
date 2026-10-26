@@ -90,7 +90,7 @@ uv run uvicorn ai_service.main:app --port 8001 --reload
 | `AI_LLM_MODEL_MAIN` / `_FAST` / `_CHECKER` | `qwen/qwen3.6-35b-a3b` / `google/gemma-4-26b-a4b-it` / `z-ai/glm-5.3-flash` | генерация и чат / планирование / самопроверка; разрешены только 6 точных ID из инструкции |
 | `AI_LLM_TIMEOUT_S`, `AI_LLM_MAX_RETRIES`, `AI_LLM_MAX_TOKENS` | 60, 3, 4000 | лимиты одного вызова |
 | `AI_LLM_REASONING_ENABLED` | `false` | reasoning для Qwen/GLM; отключение предотвращает обрыв JSON из-за thinking-токенов |
-| `AI_INSIGHT_TIMEOUT_S`, `AI_CHAT_TIMEOUT_S` | 120, 45 | лимит на запрос целиком (→ 504 `llm_timeout`); HTTP-таймаут backend — 130 с |
+| `AI_INSIGHT_TIMEOUT_S`, `AI_CHAT_TIMEOUT_S` | 120, 90 | лимит на запрос целиком (→ 504 `llm_timeout`); HTTP-таймаут backend — 130 с. Внутри лимита: повтор сетевых сбоев, 5xx/429 и обрезанного JSON (`llm/retry.py`); сбой fast/checker-модели не роняет инсайт — применяются офлайн-план и правила |
 | `AI_SCORE_LLM_ADJUST` | `true` | поправка ±1 моделью `fast` при скоринге |
 | `AI_ARTICLES_DIR`, `AI_DATASETS_DIR`, `AI_INDEX_DIR` | `data/articles`, `data/datasets`, `data/index` | данные и индекс |
 | `AI_EMBED_DENSE_MODEL`, `AI_EMBED_SPARSE_LANGUAGE` | MiniLM multilingual, `russian` | эмбеддинги |

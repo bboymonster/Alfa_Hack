@@ -1,5 +1,6 @@
 """Ноды графа инсайта. Каждая возвращает частичное обновление InsightState."""
 
+import asyncio
 from typing import Literal
 
 from ai_service.agent.checks import rule_violations, sanitize
@@ -9,7 +10,7 @@ from ai_service.agent.state import InsightState
 from ai_service.agent.tools import AlfaRAGTool, CompanyProfileTool, CounterpartyTool
 from ai_service.config import Settings
 from ai_service.datasets.store import Datasets
-from ai_service.llm.generator import InsightGenerator
+from ai_service.llm.generator import InsightGenerator, plan_offline
 from ai_service.logging import get_logger
 from ai_service.rag.retriever import Retriever
 from ai_service.schemas.common import NewsCategory
@@ -53,10 +54,20 @@ class InsightNodes:
 
     # ------------------------------------------------------------------ nodes
     async def plan(self, state: InsightState) -> dict[str, object]:
-        plan = await self.generator.plan(state["news"])
+        note = ""
+        try:
+            plan = await self.generator.plan(state["news"])
+        except Exception as exc:
+            # Планирование — вспомогательный шаг: при сбое fast-модели берём детерминированный
+            # план вместо того, чтобы ронять весь инсайт.
+            log.warning("plan.fallback", error=type(exc).__name__)
+            plan = plan_offline(state["news"])
+            note = f"; LLM-план недоступен ({type(exc).__name__}), применён офлайн-план"
         return {
             "plan": plan,
-            "steps": [f"plan: тема {plan.topic.value}, запросов к корпусу — {len(plan.queries)}"],
+            "steps": [
+                f"plan: тема {plan.topic.value}, запросов к корпусу — {len(plan.queries)}{note}"
+            ],
         }
 
     async def gather_context(self, state: InsightState) -> dict[str, object]:
@@ -66,8 +77,9 @@ class InsightNodes:
         steps: list[str] = []
         errors: list[str] = []
 
-        company, trace = self.profile_tool.run(
-            state["company"], self.datasets, options.enrich_from_datasets
+        # Инструменты датасетов читают pandas-фреймы синхронно — выносим из event loop.
+        company, trace = await asyncio.to_thread(
+            self.profile_tool.run, state["company"], self.datasets, options.enrich_from_datasets
         )
         steps += trace.steps
         errors += trace.errors
@@ -79,8 +91,8 @@ class InsightNodes:
             else "match_triggers: признаков не найдено"
         )
 
-        counterparties, trace = self.counterparty_tool.run(
-            company, self.datasets, options.enrich_from_datasets
+        counterparties, trace = await asyncio.to_thread(
+            self.counterparty_tool.run, company, self.datasets, options.enrich_from_datasets
         )
         steps += trace.steps
         errors += trace.errors
@@ -134,13 +146,20 @@ class InsightNodes:
         assert draft is not None
         ctx = self._ctx(state)
         violations = [v.as_text() for v in rule_violations(ctx, draft)]
-        generator_report = await self.generator.check(ctx, draft)
+        note = ""
+        try:
+            generator_report = await self.generator.check(ctx, draft)
+        except Exception as exc:
+            # Правила уже посчитаны локально; сбой checker-модели не должен ронять инсайт.
+            log.warning("self_check.fallback", error=type(exc).__name__)
+            generator_report = CheckReport(passed=True)
+            note = f"; LLM-проверка недоступна ({type(exc).__name__}), применены правила"
         violations += [v for v in generator_report.violations if v not in violations]
         report = CheckReport(
             passed=not violations, violations=violations, attempts=state.get("attempts", 0)
         )
         status = "ok" if report.passed else f"нарушений — {len(violations)}"
-        return {"check": report, "steps": [f"self_check: {status}"]}
+        return {"check": report, "steps": [f"self_check: {status}{note}"]}
 
     def route_after_check(self, state: InsightState) -> Literal["draft", "finalize"]:
         check = state.get("check")

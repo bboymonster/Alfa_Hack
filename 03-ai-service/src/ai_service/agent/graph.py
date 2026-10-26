@@ -14,6 +14,7 @@ from ai_service.config import Settings
 from ai_service.datasets.store import Datasets
 from ai_service.errors import ApiError, ErrorCode
 from ai_service.llm.generator import InsightGenerator
+from ai_service.llm.retry import is_retryable
 from ai_service.logging import get_logger
 from ai_service.rag.retriever import Retriever
 from ai_service.schemas.common import NewsCategory
@@ -39,8 +40,13 @@ class InsightPipeline:
         self.graph = self._build()
 
     def _build(self) -> Any:
+        # Повторяем сетевые сбои, 5xx/429 и невалидный structured output; ошибки клиента
+        # (401/400/422 провайдера) и логики — нет. Дефолт LangGraph не ретраит ValueError.
         retry = RetryPolicy(
-            max_attempts=self.settings.llm_max_retries, initial_interval=0.5, backoff_factor=2.0
+            max_attempts=self.settings.llm_max_retries,
+            initial_interval=0.5,
+            backoff_factor=2.0,
+            retry_on=is_retryable,
         )
         builder: StateGraph[InsightState] = StateGraph(InsightState)
         builder.add_node("plan", self.nodes.plan, retry_policy=retry)
@@ -98,7 +104,8 @@ class InsightPipeline:
             raise ApiError(
                 ErrorCode.LLM_ERROR,
                 f"Сбой генерации инсайта: {type(exc).__name__}.",
-                details=[{"error": str(exc)[:300]}],
+                # Текст исключения провайдера (URL шлюза, тело ответа) клиенту не уходит.
+                details=[{"error_type": type(exc).__name__}],
             ) from exc
 
         six = state["draft"]

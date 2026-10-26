@@ -292,17 +292,22 @@ def offline_draft(ctx: DraftContext) -> SixQuestions:
     )
 
 
+def offtopic_answer(ctx: ChatContext) -> ChatDraft:
+    """Фиксированный отказ: вопрос вне карточки или попытка изменить правила ассистента."""
+    return ChatDraft(
+        answer=(
+            "Я отвечаю только по текущей карточке: новости «"
+            f"{ctx.news.title}» и её влиянию на {ctx.company.name}. "
+            "Переформулируйте вопрос в этом контексте, и я помогу."
+        ),
+        used_chunk_ids=[],
+        on_topic=False,
+    )
+
+
 def offline_answer(ctx: ChatContext) -> ChatDraft:
     if not ctx.on_topic_hint:
-        return ChatDraft(
-            answer=(
-                "Я отвечаю только по текущей карточке: новости «"
-                f"{ctx.news.title}» и её влиянию на {ctx.company.name}. "
-                "Переформулируйте вопрос в этом контексте, и я помогу."
-            ),
-            used_chunk_ids=[],
-            on_topic=False,
-        )
+        return offtopic_answer(ctx)
     parts = [f"По карточке «{ctx.news.title}»: {first_sentences(ctx.card.why_it_matters, 2)}"]
     if ctx.card.risks:
         parts.append(f"Ключевой риск: {ctx.card.risks[0]}")

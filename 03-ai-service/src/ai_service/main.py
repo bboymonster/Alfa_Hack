@@ -4,6 +4,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from ai_service import __version__
 from ai_service.agent.chat import ChatService
@@ -74,7 +75,12 @@ def create_app(
             corpus_available=ctx.retriever.available,
             datasets_available=ctx.datasets.available,
         )
-        yield
+        try:
+            yield
+        finally:
+            close = getattr(ctx.retriever, "close", None)
+            if callable(close):
+                close()
 
     application = FastAPI(
         title="Alfa News Insights — AI-Service",
@@ -97,6 +103,11 @@ def create_app(
         reports.router,
     ):
         application.include_router(router)
+    if settings.articles_dir.is_dir():
+        # PDF-отчёты банка: ссылки «Позиция Альфа-Банка» ведут на страницу документа.
+        application.mount(
+            "/articles", StaticFiles(directory=str(settings.articles_dir)), name="articles"
+        )
     return application
 
 

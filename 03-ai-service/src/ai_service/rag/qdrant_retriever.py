@@ -25,6 +25,7 @@ class QdrantHybridRetriever:
         self.index = index
         self.dense = dense
         self.sparse = sparse
+        self._available: bool | None = None
 
     @classmethod
     def from_settings(cls, settings: Settings) -> "QdrantHybridRetriever":
@@ -42,7 +43,15 @@ class QdrantHybridRetriever:
 
     @property
     def available(self) -> bool:
-        return self.index.exists() and self.index.count() > 0
+        # Два обращения к Qdrant на каждый вызов; после первого положительного ответа
+        # индекс уже не исчезнет (переиндексация идёт отдельным процессом).
+        if self._available:
+            return True
+        self._available = self.index.exists() and self.index.count() > 0
+        return self._available
+
+    def close(self) -> None:
+        self.index.client.close()
 
     def stats(self) -> CorpusStatus:
         reports = self.index.list_reports()

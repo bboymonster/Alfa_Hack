@@ -170,7 +170,8 @@ def sanitize(
         fixed.append(f"q3_risks: удалено пунктов — {len(drop_risks)}")
 
     if any(v.location == "q1" for v in violations):
-        data["q1_what_happened"] = " ".join(_sentences(ctx.news.summary_facts)[:3])
+        # summary_facts до 4000 символов, q1 — до 2000: иначе model_validate упадёт.
+        data["q1_what_happened"] = " ".join(_sentences(ctx.news.summary_facts)[:3])[:2000]
         fixed.append("q1: заменено на факты из новости")
 
     if any(v.location == "q5" for v in violations):

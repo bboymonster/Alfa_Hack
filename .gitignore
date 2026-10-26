@@ -130,3 +130,6 @@ Thumbs.db
 logs/
 temp/
 tmp/
+
+# AI-service: локальные PDF, CSV и индекс (сотни МБ) — никогда не коммитим
+03-ai-service/data/

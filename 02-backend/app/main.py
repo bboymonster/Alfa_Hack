@@ -1,14 +1,18 @@
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app import auth, feed
 from app.ai_client import AiClient
 from app.config import Settings
 from app.schemas import HealthResponse
 from app.store import MemoryStore
+
+log = logging.getLogger(__name__)
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -46,6 +50,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     application.include_router(auth.router)
     application.include_router(feed.router)
+
+    @application.exception_handler(Exception)
+    async def unexpected_error(request: Request, exc: Exception) -> JSONResponse:
+        # Клиент всегда получает JSON {detail}, а не plain-text «Internal Server Error».
+        log.exception("api.unexpected path=%s error=%s", request.url.path, type(exc).__name__)
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Внутренняя ошибка сервера. Повторите попытку позже."},
+        )
 
     @application.get("/health", response_model=HealthResponse, tags=["Состояние"])
     def health() -> HealthResponse:

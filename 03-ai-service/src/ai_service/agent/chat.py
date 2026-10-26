@@ -9,9 +9,11 @@ from ai_service.agent.rules import TOPIC_KEYWORDS, classify_topic_offline
 from ai_service.config import Settings
 from ai_service.errors import ApiError, ErrorCode
 from ai_service.llm.generator import InsightGenerator
+from ai_service.llm.offline import offtopic_answer
+from ai_service.llm.retry import CHAT_RETRY_DELAY_S, MAX_CHAT_ATTEMPTS, is_retryable
 from ai_service.logging import get_logger
 from ai_service.rag.retriever import Retriever
-from ai_service.schemas.chat import AskRequest, AskResponse
+from ai_service.schemas.chat import AskRequest, AskResponse, ChatDraft
 from ai_service.schemas.common import NewsCategory, SourceRef
 from ai_service.schemas.reports import ReportChunk
 
@@ -124,6 +126,20 @@ class ChatService:
             >= self.settings.rag_min_score
         ]
 
+    async def _generate(self, ctx: ChatContext) -> ChatDraft:
+        """Вызов генератора с повтором временных сбоев (сеть, 5xx, обрезанный JSON)."""
+        for attempt in range(1, MAX_CHAT_ATTEMPTS + 1):
+            try:
+                return await self.generator.answer(ctx)
+            except ApiError:
+                raise
+            except Exception as exc:
+                if attempt == MAX_CHAT_ATTEMPTS or not is_retryable(exc):
+                    raise
+                log.warning("chat.retry", attempt=attempt, error=type(exc).__name__)
+                await asyncio.sleep(CHAT_RETRY_DELAY_S * attempt)
+        raise AssertionError("unreachable")
+
     async def answer(self, request: AskRequest, request_id: str) -> AskResponse:
         started = time.perf_counter()
         topic = request.news.topic or classify_topic_offline(request.news.text_for_analysis)
@@ -149,23 +165,17 @@ class ChatService:
             chunks=chunks,
             on_topic_hint=on_topic_hint,
         )
-        try:
-            async with asyncio.timeout(self.settings.chat_timeout_s):
-                draft = await self.generator.answer(ctx)
-        except TimeoutError as exc:
-            raise ApiError(
-                ErrorCode.LLM_TIMEOUT,
-                f"Ответ не уложился в {self.settings.chat_timeout_s:.0f} с.",
-            ) from exc
-        except ApiError:
-            raise
-        except Exception as exc:
-            log.warning("chat.failed", error=type(exc).__name__)
-            raise ApiError(
-                ErrorCode.LLM_ERROR, f"Сбой генерации ответа: {type(exc).__name__}."
-            ) from exc
+        if not on_topic_hint:
+            # Оффтоп и prompt-injection не доходят до модели ни в одном режиме.
+            draft = offtopic_answer(ctx)
+        else:
+            draft = await self._generate_with_timeout(ctx)
 
         on_topic = on_topic_hint and draft.on_topic
+        if not on_topic:
+            # Модель сама пометила вопрос как посторонний — отдаём фиксированный отказ,
+            # а не её свободный текст.
+            draft = offtopic_answer(ctx)
         sources: list[SourceRef] = []
         if on_topic:
             sources.append(
@@ -211,3 +221,20 @@ class ChatService:
             sources=sources,
             on_topic=on_topic,
         )
+
+    async def _generate_with_timeout(self, ctx: ChatContext) -> ChatDraft:
+        try:
+            async with asyncio.timeout(self.settings.chat_timeout_s):
+                return await self._generate(ctx)
+        except TimeoutError as exc:
+            raise ApiError(
+                ErrorCode.LLM_TIMEOUT,
+                f"Ответ не уложился в {self.settings.chat_timeout_s:.0f} с.",
+            ) from exc
+        except ApiError:
+            raise
+        except Exception as exc:
+            log.warning("chat.failed", error=type(exc).__name__)
+            raise ApiError(
+                ErrorCode.LLM_ERROR, f"Сбой генерации ответа: {type(exc).__name__}."
+            ) from exc

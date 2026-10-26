@@ -2,6 +2,7 @@
 без текстов промптов и ответов (принцип III конституции)."""
 
 import logging
+import re
 import sys
 import uuid
 from collections.abc import Awaitable, Callable
@@ -44,6 +45,9 @@ def get_logger(name: str) -> structlog.stdlib.BoundLogger:
     return structlog.get_logger(name)  # type: ignore[no-any-return]
 
 
+_SAFE_REQUEST_ID = re.compile(r"[A-Za-z0-9_.:\-]{1,64}")
+
+
 def new_request_id() -> str:
     return uuid.uuid4().hex
 
@@ -51,7 +55,9 @@ def new_request_id() -> str:
 async def request_id_middleware(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
-    request_id = request.headers.get(REQUEST_ID_HEADER) or new_request_id()
+    incoming = request.headers.get(REQUEST_ID_HEADER, "")
+    # Чужой заголовок эхом уходит в ответ и во все логи — принимаем только безопасный формат.
+    request_id = incoming if _SAFE_REQUEST_ID.fullmatch(incoming) else new_request_id()
     request.state.request_id = request_id
     structlog.contextvars.clear_contextvars()
     structlog.contextvars.bind_contextvars(request_id=request_id, path=request.url.path)
