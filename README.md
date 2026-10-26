@@ -261,26 +261,6 @@ docker compose exec ai-service ai-service index-reports
 7. **Swagger.** Для технической проверки откройте `http://localhost:8000/docs`
    (backend) и `http://localhost:8001/docs` (AI-service).
 
----
-
-## 🌐 Развёртывание на бесплатном хостинге (опционально)
-
-Для статической демонстрации подготовлен GitHub Actions-воркфлоу
-[`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml): он собирает
-`01-frontend` (Vite, `base: './'`) и публикует `dist/` на GitHub Pages.
-
-- Фронтенд собран с относительными путями, поэтому работает и на проектном сайте
-  `https://<user>.github.io/Alfa_Hack/`.
-- Сборка Pages использует `VITE_DEMO_MODE=true` и **автономный демо-режим**
-  (`src/demoData.js`): вход, смена компании и роли, чат и избранное работают в браузере.
-- Включение: в репозитории `Settings → Pages → Source: "GitHub Actions"`.
-- Без включённого Pages workflow проверяет lint/build и пропускает публикацию.
-
-⚠️ Бесплатные GitHub Pages доступны для **публичных** репозиториев. Для приватного
-репозитория Pages требует платный план (GitHub Pro/Team) — в этом случае можно либо
-временно открыть репозиторий, либо развернуть статику на любом другом бесплатном
-хостинге (Netlify, Vercel, Cloudflare Pages) командой сборки `npm ci && npm run build`
-из папки `01-frontend`.
 
 ## Обновление от 26 октября 2026
 
