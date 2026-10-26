@@ -106,7 +106,7 @@ class DatasetStore:
                     rows[row["SYNTHETIC_U"]] = row
             log.info("datasets.companies_loaded", count=len(rows))
             return rows
-        except Exception as exc:  # noqa: BLE001 — файл битый → работаем без датасета
+        except Exception as exc:
             log.warning("datasets.companies_error", error=type(exc).__name__)
             return None
 
@@ -125,7 +125,7 @@ class DatasetStore:
             )
             log.info("datasets.payments_loaded", rows=len(frame))
             return frame
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.warning("datasets.payments_error", error=type(exc).__name__)
             return None
 
@@ -134,6 +134,20 @@ class DatasetStore:
     def available(self) -> bool:
         self._ensure_loaded()
         return self._companies is not None
+
+    def get_profile(self, synthetic_u: str, *, name: str | None = None) -> CompanyProfile | None:
+        """Профиль из CSV; пустые необязательные поля нормализует CompanyProfile."""
+        self._ensure_loaded()
+        row = (self._companies or {}).get(synthetic_u)
+        if row is None:
+            return None
+        data: dict[str, Any] = {
+            column.lower(): value
+            for column, value in row.items()
+            if column.lower() in CompanyProfile.model_fields
+        }
+        data.update(synthetic_u=synthetic_u, name=name or synthetic_u)
+        return CompanyProfile.model_validate(data)
 
     def merge_missing(self, company: CompanyProfile) -> tuple[CompanyProfile, list[str]]:
         self._ensure_loaded()
@@ -213,7 +227,7 @@ class DatasetStore:
                     )
                 )
             return result
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             log.warning("datasets.counterparties_error", error=type(exc).__name__)
             return []
 

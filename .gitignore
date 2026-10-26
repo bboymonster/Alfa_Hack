@@ -92,6 +92,8 @@ out/
 *.db
 !/data/sample/*.csv
 !/data/sample/*.json
+# Маленькие синтетические фикстуры нужны для тестов после чистого clone.
+!/03-ai-service/tests/fixtures/datasets/*.csv
 
 # ML Models & Vector DB Storage
 *.bin

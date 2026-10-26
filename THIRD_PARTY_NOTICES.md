@@ -17,10 +17,12 @@
 ## 2. Открытые библиотеки и фреймворки
 
 ### Frontend
-- **React / Next.js** (MIT License) — UI-фреймворк.
+- **React / Vite** (MIT License) — UI и сборка.
 - **Tailwind CSS** (MIT License) — утилитарные стили.
-- **Lucide Icons** (ISC License) — набор векторных иконок.
-- **Axios / TanStack Query** (MIT License) — сетевые запросы и кэширование состояния.
+- **Golos Text** (SIL Open Font License 1.1) — локальный шрифт с кириллицей,
+  [Google Fonts](https://github.com/google/fonts/tree/main/ofl/golostext).
+  Файл лицензии: `01-frontend/src/assets/fonts/OFL.txt`.
+- Иконки — локальные SVG-компоненты команды; сетевые запросы — браузерный Fetch API.
 
 ### Backend
 - **FastAPI** (MIT License) — веб-фреймворк для построения REST API.

@@ -85,11 +85,12 @@ uv run uvicorn ai_service.main:app --port 8001 --reload
 
 | Переменная | По умолчанию | Назначение |
 |---|---|---|
-| `AI_LLM_API_KEY` | пусто → `offline` | ключ OpenAI-совместимого провайдера (OpenRouter, vLLM, …) |
-| `AI_LLM_BASE_URL` | `https://openrouter.ai/api/v1` | адрес API |
-| `AI_LLM_MODEL_MAIN` / `_FAST` / `_CHECKER` | `deepseek/deepseek-v4.1-flash` / `google/gemma-4-26b-a4b-it` / `z-ai/glm-5.3-flash` | модели из Приложения 3 ТЗ; **id сверить у провайдера** |
-| `AI_LLM_TIMEOUT_S`, `AI_LLM_MAX_RETRIES`, `AI_LLM_MAX_TOKENS` | 30, 3, 2000 | лимиты одного вызова |
-| `AI_INSIGHT_TIMEOUT_S`, `AI_CHAT_TIMEOUT_S` | 60, 45 | лимит на запрос целиком (→ 504 `llm_timeout`) |
+| `AI_LLM_API_KEY` | пусто → `offline` | ключ команды, хранится только в локальном `.env` / окружении сервера |
+| `AI_LLM_BASE_URL` | `https://changellenge.up.railway.app/v1` | шлюз организаторов; резерв: `https://api.alfahack-gateway26.ru/v1` |
+| `AI_LLM_MODEL_MAIN` / `_FAST` / `_CHECKER` | `qwen/qwen3.6-35b-a3b` / `google/gemma-4-26b-a4b-it` / `z-ai/glm-5.3-flash` | генерация и чат / планирование / самопроверка; разрешены только 6 точных ID из инструкции |
+| `AI_LLM_TIMEOUT_S`, `AI_LLM_MAX_RETRIES`, `AI_LLM_MAX_TOKENS` | 60, 3, 4000 | лимиты одного вызова |
+| `AI_LLM_REASONING_ENABLED` | `false` | reasoning для Qwen/GLM; отключение предотвращает обрыв JSON из-за thinking-токенов |
+| `AI_INSIGHT_TIMEOUT_S`, `AI_CHAT_TIMEOUT_S` | 120, 45 | лимит на запрос целиком (→ 504 `llm_timeout`); HTTP-таймаут backend — 130 с |
 | `AI_SCORE_LLM_ADJUST` | `true` | поправка ±1 моделью `fast` при скоринге |
 | `AI_ARTICLES_DIR`, `AI_DATASETS_DIR`, `AI_INDEX_DIR` | `data/articles`, `data/datasets`, `data/index` | данные и индекс |
 | `AI_EMBED_DENSE_MODEL`, `AI_EMBED_SPARSE_LANGUAGE` | MiniLM multilingual, `russian` | эмбеддинги |
