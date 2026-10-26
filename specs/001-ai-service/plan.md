@@ -42,9 +42,9 @@ Docker-образ без torch (ONNX); все тексты для пользов
 **Scale/Scope**: корпус ≈ 60 страниц / ≈ 300 фрагментов; 3–5 демо-компаний, до 100
 новостей в ленте; один инстанс, один воркер
 
-## Constitution Check
+## Проверка требований
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+Основание: [принципы сервиса](principles.md).
 
 | Принцип | Как выполняется | Статус |
 |---|---|---|
@@ -72,7 +72,7 @@ specs/001-ai-service/
 │   ├── openapi.yaml            # HTTP-контракт ai-service
 │   └── backend-integration.md  # как backend вызывает сервис, fallback, маппинг
 ├── checklists/requirements.md
-└── tasks.md                    # /speckit-tasks
+└── tasks.md                    # задачи реализации
 ```
 
 ### Source Code (repository root)
