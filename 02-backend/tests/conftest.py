@@ -7,7 +7,11 @@ from app.main import create_app
 
 @pytest.fixture
 def client():
-    settings = Settings(_env_file=None, jwt_secret_key="test-key-with-at-least-32-characters")
+    settings = Settings(
+        _env_file=None,
+        jwt_secret_key="test-key-with-at-least-32-characters",
+        ai_service_enabled=False,
+    )
     with TestClient(create_app(settings)) as test_client:
         yield test_client
 

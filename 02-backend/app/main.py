@@ -1,3 +1,6 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -10,9 +13,19 @@ from app.store import MemoryStore
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings()
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        app.state.store.start_enrichment()
+        try:
+            yield
+        finally:
+            app.state.store.stop_enrichment()
+
     application = FastAPI(
         title="Alfa News Insights — Backend",
-        version="0.1.0",
+        version="0.2.0",
+        lifespan=lifespan,
         description=(
             "API для подключения frontend. Войдите через /api/auth/login и вставьте "
             "access_token в кнопку Authorize. Тестовый логин: alfa-hack-2026, пароль: "
@@ -36,8 +49,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @application.get("/health", response_model=HealthResponse, tags=["Состояние"])
     def health() -> HealthResponse:
+        ai_status, ai_mode = ai_client.runtime_status()
         return HealthResponse(
-            ai="ai-service" if settings.ai_service_enabled else "mock",
+            ai="ai-service" if ai_status == "available" else "mock",
+            ai_status=ai_status,
+            ai_mode=ai_mode,
+            enrichment=application.state.store.enrichment_status(),
         )
 
     return application

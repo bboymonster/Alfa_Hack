@@ -24,9 +24,12 @@ def register(client, **changes):
 def test_health_and_openapi_are_available_without_login(client):
     assert client.get("/health").json() == {
         "status": "ok",
-        "mode": "mock",
+        "mode": "demo",
         "storage": "memory",
         "ai": "mock",
+        "ai_status": "disabled",
+        "ai_mode": "mock",
+        "enrichment": {"status": "disabled", "completed": 0, "total": 27},
     }
     schema = client.get("/openapi.json").json()
     assert "/api/feed" in schema["paths"]

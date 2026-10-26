@@ -36,6 +36,7 @@ def generate_feed_insight(news_item: News, company_context: Company, role: Role)
         action = "Передать сообщение ответственному за учёт и проверить первоисточник."
 
     return Insight(
+        mode="mock",
         why_it_matters=(
             f"Демо: для {company_context.name} ({company_context.synthetic_u}) {impact}. "
             f"Фокус роли {role.value}: {ROLE_FOCUS[role]}."
