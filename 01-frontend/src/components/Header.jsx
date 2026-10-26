@@ -16,14 +16,11 @@ export default function Header({
   onChangeRole,
   onLogout,
 }) {
+  const fullName = user?.full_name || user?.email || "Пользователь";
   return (
     <header className="app-header">
       <div className="header-main">
-        <a
-          href="#main"
-          className="brand"
-          aria-label="Альфа-Инсайт — перейти к ленте"
-        >
+        <a href="#main" className="brand" aria-label="Альфа-Инсайт — перейти к ленте">
           <span className="brand-mark">
             А<span />
           </span>
@@ -34,12 +31,27 @@ export default function Header({
         </a>
         <span className="header-product">Аналитика для бизнеса</span>
         <div className="header-user">
-          {demo && <span className="badge badge-demo">Демо</span>}
-          <span className="user-name">{user.full_name}</span>
-          <span className="avatar" aria-hidden="true">
-            {user.full_name?.slice(0, 1) || "А"}
+          {demo && (
+            <span
+              className="badge badge-demo"
+              title="Сервер недоступен: данные демонстрационные и хранятся только в браузере"
+            >
+              Демо
+            </span>
+          )}
+          <span className="user-name" title={fullName}>
+            {fullName}
           </span>
-          <button className="icon-button" onClick={onLogout} aria-label="Выйти">
+          <span className="avatar" aria-hidden="true">
+            {fullName.trim().slice(0, 1).toUpperCase() || "А"}
+          </span>
+          <button
+            type="button"
+            className="icon-button"
+            onClick={onLogout}
+            aria-label="Выйти"
+            title="Выйти"
+          >
             <Icon name="exit" />
           </button>
         </div>
@@ -51,7 +63,9 @@ export default function Header({
             aria-label="Компания"
             value={companyId}
             onChange={(event) => onChangeCompany(event.target.value)}
+            disabled={companies.length === 0}
           >
+            {companies.length === 0 && <option value="">Компании не найдены</option>}
             {companies.map((company) => (
               <option key={company.synthetic_u} value={company.synthetic_u}>
                 {company.name}

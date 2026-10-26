@@ -3,12 +3,15 @@
 Граф агента одинаков для обоих режимов; различается только генератор.
 """
 
+import asyncio
 import json
-from typing import Protocol, TypeVar
+import re
+from collections.abc import Awaitable, Callable, Iterator
+from typing import Any, Protocol, TypeVar
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import HumanMessage, SystemMessage
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from ai_service.agent.context import (
     ChatContext,
@@ -23,6 +26,7 @@ from ai_service.agent.context import (
 from ai_service.agent.rules import ROLE_FOCUS, classify_topic_offline, extract_keywords
 from ai_service.llm.offline import offline_answer, offline_draft
 from ai_service.llm.provider import ModelSlots
+from ai_service.logging import get_logger
 from ai_service.prompts import PROMPT_VERSION
 from ai_service.prompts.chat import CHAT_SYSTEM, CHAT_USER
 from ai_service.prompts.check import CHECK_SYSTEM, CHECK_USER
@@ -40,9 +44,50 @@ from ai_service.schemas.common import Mode, NewsCategory, Role
 from ai_service.schemas.company import CompanyProfile
 from ai_service.schemas.insight import CheckReport, NewsPlan, SixQuestions
 from ai_service.schemas.news import NewsItem
-from ai_service.schemas.score import AdjustmentList, ImportanceScore
+from ai_service.schemas.score import Adjustment, AdjustmentList, ImportanceScore
+
+log = get_logger(__name__)
 
 T = TypeVar("T", bound=BaseModel)
+ItemT = TypeVar("ItemT")
+ResultT = TypeVar("ResultT")
+
+# Пакетные вызовы (классификация, поправка скоринга): крупный список не влезает в
+# max_tokens одним ответом, поэтому режем на батчи и зовём модель параллельно.
+BATCH_SIZE = 25
+MAX_PARALLEL_BATCHES = 4
+
+_JSON_FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.IGNORECASE | re.MULTILINE)
+
+
+def _strip_fences(text: str) -> str:
+    return _JSON_FENCE.sub("", text.strip()).strip()
+
+
+def _message_text(message: Any) -> str:
+    content = getattr(message, "content", None)
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for part in content:
+            if isinstance(part, str):
+                parts.append(part)
+            elif isinstance(part, dict) and isinstance(part.get("text"), str):
+                parts.append(part["text"])
+        return "".join(parts)
+    return ""
+
+
+def _raw_candidates(message: Any) -> Iterator[object]:
+    """Что ещё можно распарсить, если штатный парсер structured output не справился."""
+    for call in getattr(message, "tool_calls", None) or []:
+        args = call.get("args") if isinstance(call, dict) else None
+        if args:
+            yield args
+    text = _message_text(message)
+    if text:
+        yield _strip_fences(text)
 
 
 class NewsClassification(BaseModel):
@@ -151,13 +196,58 @@ class LLMGenerator:
 
     @staticmethod
     async def _structured(model: BaseChatModel, schema: type[T], system: str, user: str) -> T:
-        runnable = model.with_structured_output(schema)
-        result = await runnable.ainvoke([SystemMessage(content=system), HumanMessage(content=user)])
-        if isinstance(result, schema):
-            return result
-        if isinstance(result, dict):
-            return schema.model_validate(result)
-        raise TypeError(f"Неожиданный тип structured output: {type(result).__name__}")
+        """Structured output с запасным разбором: шлюзы и модели Приложения 3 иногда
+        отдают JSON в markdown-обёртке или только в tool_calls — такой ответ не теряем."""
+        runnable = model.with_structured_output(schema, include_raw=True)
+        result: Any = await runnable.ainvoke(
+            [SystemMessage(content=system), HumanMessage(content=user)]
+        )
+        raw: Any = None
+        parsed: Any = result
+        if isinstance(result, dict) and "raw" in result:
+            raw = result.get("raw")
+            parsed = result.get("parsed")
+        if isinstance(parsed, schema):
+            return parsed
+        if isinstance(parsed, dict):
+            return schema.model_validate(parsed)
+        last_error: Exception | None = None
+        for candidate in _raw_candidates(raw):
+            try:
+                if isinstance(candidate, str):
+                    return schema.model_validate_json(candidate)
+                return schema.model_validate(candidate)
+            except (ValidationError, ValueError) as exc:
+                last_error = exc
+        if last_error is not None:
+            raise last_error
+        raise TypeError(f"Пустой structured output: {type(parsed).__name__}")
+
+    @staticmethod
+    async def _in_batches(
+        items: list[ItemT],
+        handler: Callable[[list[ItemT]], Awaitable[list[ResultT]]],
+    ) -> list[ResultT]:
+        batches = [items[i : i + BATCH_SIZE] for i in range(0, len(items), BATCH_SIZE)]
+        semaphore = asyncio.Semaphore(MAX_PARALLEL_BATCHES)
+
+        async def run(batch: list[ItemT]) -> list[ResultT]:
+            async with semaphore:
+                return await handler(batch)
+
+        outcomes = await asyncio.gather(*(run(b) for b in batches), return_exceptions=True)
+        collected: list[ResultT] = []
+        failures: list[BaseException] = []
+        for outcome in outcomes:
+            if isinstance(outcome, BaseException):
+                failures.append(outcome)
+            else:
+                collected.extend(outcome)
+        if failures:
+            log.warning("llm.batch_failed", failed=len(failures), batches=len(batches))
+            if len(failures) == len(batches):
+                raise failures[0]
+        return collected
 
     async def plan(self, news: NewsItem) -> NewsPlan:
         user = PLAN_USER.format(
@@ -219,6 +309,9 @@ class LLMGenerator:
     async def classify_news(self, items: list[NewsItem]) -> list[NewsClassification]:
         if not items:
             return []
+        return await self._in_batches(items, self._classify_batch)
+
+    async def _classify_batch(self, items: list[NewsItem]) -> list[NewsClassification]:
         block = "\n".join(f"{i.id} | {i.title} | {i.summary_facts[:300]}" for i in items)
         result = await self._structured(
             self.slots.fast,
@@ -236,21 +329,26 @@ class LLMGenerator:
     ) -> AdjustmentList:
         if not items:
             return AdjustmentList(adjustments=[])
-        block = "\n".join(
-            f"{news.id} | {score.score} | {news.title} | {news.summary_facts[:300]}"
-            for news, score in items
-        )
-        return await self._structured(
-            self.slots.fast,
-            AdjustmentList,
-            SCORE_ADJUST_SYSTEM,
-            SCORE_ADJUST_USER.format(
-                company_block=company_block(company),
-                role=role.value,
-                role_focus=f"{ROLE_FOCUS[role].title}: {ROLE_FOCUS[role].description}",
-                items_block=block,
-            ),
-        )
+
+        async def adjust_batch(batch: list[tuple[NewsItem, ImportanceScore]]) -> list[Adjustment]:
+            block = "\n".join(
+                f"{news.id} | {score.score} | {news.title} | {news.summary_facts[:300]}"
+                for news, score in batch
+            )
+            result = await self._structured(
+                self.slots.fast,
+                AdjustmentList,
+                SCORE_ADJUST_SYSTEM,
+                SCORE_ADJUST_USER.format(
+                    company_block=company_block(company),
+                    role=role.value,
+                    role_focus=f"{ROLE_FOCUS[role].title}: {ROLE_FOCUS[role].description}",
+                    items_block=block,
+                ),
+            )
+            return result.adjustments
+
+        return AdjustmentList(adjustments=await self._in_batches(items, adjust_batch))
 
 
 def build_generator(slots: ModelSlots | None) -> InsightGenerator:

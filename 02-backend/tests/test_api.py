@@ -251,3 +251,23 @@ def test_unknown_origin_is_not_allowed(client):
     )
     assert response.status_code == 400
     assert "access-control-allow-origin" not in response.headers
+
+
+def test_unexpected_error_returns_json_detail():
+    from fastapi.testclient import TestClient
+
+    from app.config import Settings
+    from app.main import create_app
+
+    app = create_app(Settings(_env_file=None, ai_service_enabled=False))
+
+    @app.get("/boom")
+    def boom():
+        raise RuntimeError("secret internals")
+
+    with TestClient(app, raise_server_exceptions=False) as client:
+        response = client.get("/boom")
+    assert response.status_code == 500
+    assert response.headers["content-type"].startswith("application/json")
+    assert response.json() == {"detail": "Внутренняя ошибка сервера. Повторите попытку позже."}
+    assert "secret internals" not in response.text

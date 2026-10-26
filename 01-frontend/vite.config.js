@@ -13,6 +13,8 @@ export default defineConfig({
     proxy: {
       // В dev-режиме проксируем API на локальный backend.
       '/api': 'http://localhost:8000',
+      // PDF-отчёты банка раздаёт ai-service (ссылки «Позиция Альфа-Банка»).
+      '/articles': 'http://localhost:8001',
     },
   },
 })
